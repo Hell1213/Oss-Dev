@@ -28,6 +28,7 @@ docs/
 .oss-dev/
 *.checkpoint
 *.snapshot
+.ai-agent/
 
 # Python
 __pycache__/
