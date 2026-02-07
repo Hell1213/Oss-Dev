@@ -501,7 +501,8 @@ def main(
 
 
 # Add OSS command group
-from cli.oss_commands import oss_dev_group
+# INTENTIONAL ERROR: Missing import - this will be fixed by agent in issue #3
+# from cli.oss_commands import oss_dev_group
 main.add_command(oss_dev_group)
 
 if __name__ == "__main__":
