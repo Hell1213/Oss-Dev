@@ -5,10 +5,13 @@ Tool that allows the Agent to interact with the OSS workflow orchestrator.
 """
 
 from pathlib import Path
+import logging
 from tools.base import Tool, ToolInvocation, ToolKind, ToolResult
 from pydantic import BaseModel, Field
 
 from oss.workflow import OSSWorkflow, WorkflowPhase
+
+logger = logging.getLogger(__name__)
 
 
 class WorkflowOrchestratorParams(BaseModel):
@@ -57,6 +60,8 @@ class WorkflowOrchestratorTool(Tool):
         params = WorkflowOrchestratorParams(**invocation.params)
         repo_path = Path(params.path) if params.path else invocation.cwd
 
+        logger.info(f"Workflow orchestrator called: action={params.action}, repo={repo_path}")
+
         try:
             workflow = self._get_workflow(repo_path)
 
@@ -64,6 +69,14 @@ class WorkflowOrchestratorTool(Tool):
                 if not params.issue_url:
                     return ToolResult.error_result(
                         "issue_url is required for 'start' action"
+                    )
+                
+                # Check if workflow is already started
+                if workflow.state.issue_url and workflow.state.issue_number:
+                    return ToolResult.error_result(
+                        f"Workflow already started for issue #{workflow.state.issue_number}. "
+                        f"Current phase: {workflow.state.phase.value}. "
+                        f"Use 'get_status' to check status or 'mark_phase_complete' to continue."
                     )
 
                 # Start workflow (phases 1-2 execute immediately)
@@ -99,12 +112,43 @@ class WorkflowOrchestratorTool(Tool):
 
             elif params.action == "mark_phase_complete":
                 current_phase = workflow.state.phase
-                workflow.mark_phase_complete(current_phase)
+                previous_phase = current_phase.value
+                
+                logger.info(f"Marking phase complete: {previous_phase} (Issue #{workflow.state.issue_number})")
+                
+                try:
+                    await workflow.mark_phase_complete(current_phase)
+                except ValueError as e:
+                    # Validation failed - return error to agent
+                    error_msg = str(e)
+                    logger.error(f"Phase completion validation failed: {error_msg}")
+                    return ToolResult.error_result(
+                        f"❌ Cannot mark phase '{previous_phase}' complete.\n\n"
+                        f"{error_msg}\n\n"
+                        f"**Action Required:**\n"
+                        f"1. Complete the missing work\n"
+                        f"2. Verify all requirements are met\n"
+                        f"3. Try calling 'mark_phase_complete' again\n\n"
+                        f"Use 'workflow_orchestrator(action=\"get_status\")' to check current state."
+                    )
+                
+                new_phase = workflow.state.phase.value
+                phase_info = workflow.get_current_phase_info()
+                
+                logger.info(f"Phase transition successful: {previous_phase} -> {new_phase}")
 
+                # Get the new phase prompt
+                new_phase_prompt = workflow.get_phase_prompt()
+                
                 return ToolResult.success_result(
-                    f"Phase {current_phase.value} marked complete.\n"
-                    f"Transitioned to: {workflow.state.phase.value}\n\n"
-                    f"Next: {workflow.get_phase_prompt()}"
+                    f"✅ Phase '{previous_phase}' marked complete.\n"
+                    f"🔄 Transitioned to: {new_phase}\n"
+                    f"📋 Issue: #{phase_info.get('issue_number', 'N/A')}\n"
+                    f"🌿 Branch: {phase_info.get('branch_name', 'Not created')}\n"
+                    f"📝 Changes Made: {'✅ Yes' if phase_info.get('changes_made') else '❌ No'}\n\n"
+                    f"=== NEW PHASE: {new_phase.upper()} ===\n"
+                    f"{new_phase_prompt}\n\n"
+                    f"Continue working on this phase. When complete, call 'mark_phase_complete' again."
                 )
 
             elif params.action == "get_status":
@@ -112,12 +156,12 @@ class WorkflowOrchestratorTool(Tool):
                 state = workflow.get_state()
 
                 output_lines = [
-                    "Workflow Status:",
+                    "📋 Workflow Status:",
                     f"  Phase: {phase_info['phase']}",
                     f"  Issue: #{phase_info['issue_number']}" if phase_info.get('issue_number') else "  Issue: None",
                     f"  Branch: {phase_info['branch_name']}" if phase_info.get('branch_name') else "  Branch: Not created",
-                    f"  Changes Made: {phase_info['changes_made']}",
-                    f"  Tests Passed: {phase_info['tests_passed']}",
+                    f"  Changes Made: {'✅ Yes' if phase_info['changes_made'] else '❌ No'}",
+                    f"  Tests Passed: {'✅ Yes' if phase_info['tests_passed'] else '❌ No'}",
                     f"  PR URL: {phase_info['pr_url']}" if phase_info.get('pr_url') else "  PR: Not created",
                 ]
 
