@@ -370,31 +370,57 @@ class OSSWorkflow:
 
     def _get_repository_understanding_prompt(self) -> str:
         """Get prompt for repository understanding phase."""
+        # Check if repository has been analyzed
+        if not self.state.repository_analysis:
+            # Need to analyze first
+            return """# Phase 1: Repository Understanding
+
+**CRITICAL**: You MUST ensure START_HERE.md exists.
+
+## Steps (in order):
+
+1. **Analyze Repository**: Use `analyze_repository` tool to understand the codebase
+2. **Check START_HERE.md**: Use `check_start_here` tool
+3. **Create if missing**: If START_HERE.md doesn't exist, use `create_start_here` tool
+4. **Mark complete**: Once START_HERE.md exists, call `workflow_orchestrator(action='mark_phase_complete')`
+
+**DO NOT skip creating START_HERE.md. It is mandatory.**"""
+        
+        # Repository analyzed, check START_HERE
         if self.state.start_here_exists:
-            return (
-                "Repository has been analyzed. START_HERE.md exists. "
-                "Review the repository structure and proceed to issue intake.\n\n"
-                "When ready, call 'workflow_orchestrator' with action 'mark_phase_complete' to move to Phase 2."
-            )
+            return """# Phase 1: Repository Understanding
+
+**Status**: START_HERE.md exists. Review it and proceed.
+
+**Action**: Call `workflow_orchestrator(action='mark_phase_complete')` to proceed to Phase 2: Issue Intake."""
         else:
-            return (
-                "Analyze the repository structure. Use 'analyze_repository' tool to understand "
-                "the codebase architecture, entry points, test strategy, and CI setup. "
-                "Create START_HERE.md if it doesn't exist.\n\n"
-                "When analysis is complete, call 'workflow_orchestrator' with action 'mark_phase_complete' to move to Phase 2."
-            )
+            return """# Phase 1: Repository Understanding
+
+**CRITICAL**: START_HERE.md does NOT exist. You MUST create it.
+
+**Steps:**
+1. Use `create_start_here` tool to create START_HERE.md
+2. After creation, call `workflow_orchestrator(action='mark_phase_complete')`
+
+**DO NOT skip creating START_HERE.md. It is mandatory.**"""
 
     def _get_issue_intake_prompt(self) -> str:
         """Get prompt for issue intake phase."""
         if not self.state.issue_url:
             return "Issue URL is required. Please provide a GitHub issue URL."
 
-        return (
-            f"Fetch and analyze GitHub issue: {self.state.issue_url}\n"
-            f"Use 'fetch_issue' tool to get issue details. "
-            f"Summarize what is being asked and what is explicitly out of scope. "
-            f"Store the issue intent for planning."
-        )
+        return f"""# Phase 2: Issue Intake
+
+**Task**: Fetch and understand the GitHub issue.
+
+## Steps:
+
+1. **Fetch Issue**: Use `fetch_issue` tool with issue URL: {self.state.issue_url}
+2. **Analyze**: Summarize:
+   - What is being asked
+   - What is explicitly out of scope
+   - Key requirements
+3. **Mark Complete**: Call `workflow_orchestrator(action='mark_phase_complete')` to proceed to Phase 3: Planning"""
 
     def _get_planning_prompt(self) -> str:
         """Get prompt for planning phase."""
