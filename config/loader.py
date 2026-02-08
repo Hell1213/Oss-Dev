@@ -80,7 +80,15 @@ def load_config(cwd: Path | None) -> Config:
 
     config_dict: dict[str, Any] = {}
 
-    if system_path.is_file():
+    if not any((system_path.is_file(), _get_project_config(cwd))):
+            raise ConfigError(
+                'Configuration file is missing. Please ensure you have a config.toml file in your working directory.\n'
+                'You can create one based on the following template:\n'
+                '[model]\n'
+                'api_key=YOUR_API_KEY\n'
+                '[oss]\n'
+                'enabled=true'
+            )
         try:
             config_dict = _parse_toml(system_path)
         except ConfigError:

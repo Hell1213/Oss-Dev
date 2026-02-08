@@ -84,7 +84,7 @@ def oss_dev_group(ctx: click.Context, cwd: Optional[Path]):
         ctx.obj["config"] = config
         ctx.obj["cwd"] = cwd or config.cwd
     except Exception as e:
-        console.print(f"[error]Configuration Error: {e}[/error]")
+        console.print(f"[error]Configuration Error: {e}\nPlease ensure that the config.toml file is in your working directory or provide its path.[/error]")
         ctx.exit(1)
     
     errors = config.validate()
