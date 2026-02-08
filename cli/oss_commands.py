@@ -6,6 +6,7 @@ Click command group for OSS-specific commands.
 
 import asyncio
 import subprocess
+import logging
 from pathlib import Path
 from typing import Optional
 
@@ -13,6 +14,7 @@ import click
 from rich.console import Console
 
 console = Console()
+logger = logging.getLogger(__name__)
 
 
 def validate_oss_enabled(config) -> bool:
@@ -23,6 +25,15 @@ def validate_oss_enabled(config) -> bool:
             "Set 'oss.enabled = true' in your config file or set GITHUB_TOKEN environment variable."
         )
         return False
+    
+    # Check for GitHub token
+    if not config.github_token:
+        console.print(
+            "[error]GitHub token not found.[/error]\n"
+            "Set GITHUB_TOKEN environment variable or add 'github_token' to [oss] section in config."
+        )
+        return False
+    
     return True
 
 
@@ -108,6 +119,14 @@ def oss_fix(ctx: click.Context, issue_url: str):
             # Start workflow (phases 1-2 execute immediately)
             state = await workflow.start(issue_url)
             
+            # Display initial workflow status
+            console.print(f"\n[bold cyan]📋 Workflow Status:[/bold cyan]")
+            console.print(f"  Phase: [yellow]{state.phase.value}[/yellow]")
+            console.print(f"  Issue: #{state.issue_number}")
+            if state.branch_name:
+                console.print(f"  Branch: {state.branch_name}")
+            console.print()
+            
             # Get phase prompt for Agent
             phase_prompt = workflow.get_phase_prompt()
             
@@ -118,7 +137,18 @@ Current workflow phase: {state.phase.value}
 
 {phase_prompt}
 
-Please use the 'workflow_orchestrator' tool to manage the workflow and proceed through the phases."""
+## IMPORTANT: Phase Completion
+After completing each phase, you MUST call the 'workflow_orchestrator' tool with action 'mark_phase_complete' to transition to the next phase.
+
+Example:
+- After completing planning: workflow_orchestrator(action='mark_phase_complete')
+- After completing implementation: workflow_orchestrator(action='mark_phase_complete')
+- After completing verification: workflow_orchestrator(action='mark_phase_complete')
+- And so on for each phase...
+
+The workflow will automatically transition to the next phase when you mark the current one complete.
+
+Use 'workflow_orchestrator' tool with action 'get_status' to check current workflow state at any time."""
             
             # Run Agent with workflow guidance
             async with Agent(config) as agent:
@@ -128,10 +158,77 @@ Please use the 'workflow_orchestrator' tool to manage the workflow and proceed t
                     elif event.type == AgentEventType.TEXT_COMPLETE:
                         console.print(event.data.get("content", ""))
                     elif event.type == AgentEventType.TOOL_CALL_START:
-                        tool_name = event.data.get("tool_name", "unknown")
-                        console.print(f"\n[dim]Using tool: {tool_name}[/dim]")
+                        tool_name = event.data.get("name", "unknown")
+                        tool_args = event.data.get("arguments", {})
+                        
+                        # Log tool call
+                        logger.debug(f"Tool call started: {tool_name} with args: {tool_args}")
+                        
+                        # Special handling for workflow_orchestrator to show phase transitions
+                        if tool_name == "workflow_orchestrator":
+                            action = tool_args.get("action", "unknown") if isinstance(tool_args, dict) else "unknown"
+                            console.print(f"\n[bold cyan]🔄 Workflow Action: {tool_name} (action: {action})[/bold cyan]")
+                            logger.info(f"Workflow orchestrator called: action={action}")
+                        else:
+                            console.print(f"\n[dim]🔧 Using tool: {tool_name}[/dim]")
                     elif event.type == AgentEventType.TOOL_CALL_COMPLETE:
-                        console.print("[dim]Tool complete[/dim]")
+                        tool_name = event.data.get("name", "unknown")
+                        result = event.data.get("output", "")
+                        success = event.data.get("success", False)
+                        
+                        # Log tool completion
+                        logger.debug(f"Tool call completed: {tool_name}, success={success}")
+                        
+                        # Handle user confirmation requests
+                        if tool_name == "user_confirm" and "CONFIRMATION_REQUIRED" in result:
+                            # Extract confirmation message
+                            lines = result.split("\n")
+                            confirm_msg = ""
+                            default_yes = True
+                            for line in lines:
+                                if line.startswith("CONFIRMATION_REQUIRED:"):
+                                    confirm_msg = line.replace("CONFIRMATION_REQUIRED:", "").strip()
+                                elif "Default:" in line:
+                                    default_yes = "yes" in line.lower()
+                            
+                            # Ask user for confirmation
+                            console.print(f"\n[bold yellow]❓ {confirm_msg}[/bold yellow]")
+                            response = click.confirm("Proceed?", default=default_yes)
+                            
+                            if response:
+                                console.print("[green]✓ User confirmed. Proceeding with push and PR creation...[/green]\n")
+                                # Inject confirmation result back to agent
+                                await agent.session.context_manager.add_tool_result(
+                                    event.data.get("call_id", ""),
+                                    "User confirmed: YES. Proceed with push and PR creation."
+                                )
+                            else:
+                                console.print("[yellow]✗ User declined. Skipping push and PR creation.[/yellow]\n")
+                                console.print("[dim]You can push changes manually using: git push -u origin <branch-name>[/dim]\n")
+                                # Inject decline result back to agent
+                                await agent.session.context_manager.add_tool_result(
+                                    event.data.get("call_id", ""),
+                                    "User declined: NO. Skip push and PR creation. Show manual instructions instead."
+                                )
+                            continue
+                        
+                        # Show phase transitions prominently
+                        if tool_name == "workflow_orchestrator" and success:
+                            if "Transitioned to:" in result or "marked complete" in result.lower():
+                                console.print(f"\n[bold green]✓ Phase transition successful[/bold green]")
+                                logger.info(f"Phase transition completed successfully via {tool_name}")
+                                # Extract and display new phase
+                                if "Transitioned to:" in result:
+                                    for line in result.split("\n"):
+                                        if "Transitioned to:" in line:
+                                            new_phase = line.split("Transitioned to:")[-1].strip()
+                                            console.print(f"[bold cyan]📋 Current Phase: {new_phase}[/bold cyan]\n")
+                                            logger.info(f"New workflow phase: {new_phase}")
+                                # Show the new phase prompt if present
+                                if "=== NEW PHASE:" in result:
+                                    console.print("[bold yellow]New phase instructions received. Agent will continue...[/bold yellow]\n")
+                        else:
+                            console.print("[dim]Tool complete[/dim]")
                     elif event.type == AgentEventType.AGENT_ERROR:
                         console.print(f"\n[error]{event.data.get('error', 'Unknown error')}[/error]")
             
@@ -142,7 +239,17 @@ Please use the 'workflow_orchestrator' tool to manage the workflow and proceed t
             console.print(f"[error]Failed to start OSS workflow: {e}[/error]")
             ctx.exit(1)
     
-    asyncio.run(run_fix())
+    # Run async function - use new event loop
+    import sys
+    if sys.platform == "win32":
+        asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
+    
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    try:
+        loop.run_until_complete(run_fix())
+    finally:
+        loop.close()
 
 
 @oss_dev_group.command(name="review", help="Work on an issue in the current repository")
@@ -218,8 +325,8 @@ Please use the 'workflow_orchestrator' tool to manage the workflow and proceed t
                     elif event.type == AgentEventType.TEXT_COMPLETE:
                         console.print(event.data.get("content", ""))
                     elif event.type == AgentEventType.TOOL_CALL_START:
-                        tool_name = event.data.get("tool_name", "unknown")
-                        console.print(f"\n[dim]Using tool: {tool_name}[/dim]")
+                        tool_name = event.data.get("name", "unknown")
+                        console.print(f"\n[dim]🔧 Using tool: {tool_name}[/dim]")
                     elif event.type == AgentEventType.TOOL_CALL_COMPLETE:
                         console.print("[dim]Tool complete[/dim]")
                     elif event.type == AgentEventType.AGENT_ERROR:
@@ -229,7 +336,17 @@ Please use the 'workflow_orchestrator' tool to manage the workflow and proceed t
             console.print(f"[error]Failed to start OSS workflow: {e}[/error]")
             ctx.exit(1)
     
-    asyncio.run(run_review())
+    # Run async function
+    import sys
+    if sys.platform == "win32":
+        asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
+    
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    try:
+        loop.run_until_complete(run_review())
+    finally:
+        loop.close()
 
 
 @oss_dev_group.command(name="resume", help="Continue work on current branch")
@@ -282,8 +399,8 @@ Continue from where we left off."""
                     elif event.type == AgentEventType.TEXT_COMPLETE:
                         console.print(event.data.get("content", ""))
                     elif event.type == AgentEventType.TOOL_CALL_START:
-                        tool_name = event.data.get("tool_name", "unknown")
-                        console.print(f"\n[dim]Using tool: {tool_name}[/dim]")
+                        tool_name = event.data.get("name", "unknown")
+                        console.print(f"\n[dim]🔧 Using tool: {tool_name}[/dim]")
                     elif event.type == AgentEventType.TOOL_CALL_COMPLETE:
                         console.print("[dim]Tool complete[/dim]")
                     elif event.type == AgentEventType.AGENT_ERROR:
@@ -293,7 +410,17 @@ Continue from where we left off."""
             console.print(f"[error]Failed to resume workflow: {e}[/error]")
             ctx.exit(1)
     
-    asyncio.run(run_resume())
+    # Run async function
+    import sys
+    if sys.platform == "win32":
+        asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
+    
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    try:
+        loop.run_until_complete(run_resume())
+    finally:
+        loop.close()
 
 
 @oss_dev_group.command(name="status", help="Show current work status")
@@ -521,14 +648,24 @@ Continue from where we left off."""
                     elif event.type == AgentEventType.TEXT_COMPLETE:
                         console.print(event.data.get("content", ""))
                     elif event.type == AgentEventType.TOOL_CALL_START:
-                        tool_name = event.data.get("tool_name", "unknown")
-                        console.print(f"\n[dim]Using tool: {tool_name}[/dim]")
+                        tool_name = event.data.get("name", "unknown")
+                        console.print(f"\n[dim]🔧 Using tool: {tool_name}[/dim]")
                     elif event.type == AgentEventType.TOOL_CALL_COMPLETE:
                         console.print("[dim]Tool complete[/dim]")
                     elif event.type == AgentEventType.AGENT_ERROR:
                         console.print(f"\n[error]{event.data.get('error', 'Unknown error')}[/error]")
         
-        asyncio.run(run_resume())
+        # Run async function
+        import sys
+        if sys.platform == "win32":
+            asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
+        
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            loop.run_until_complete(run_resume())
+        finally:
+            loop.close()
     else:
         console.print(
             f"[error]No memory found for branch: {target}[/error]\n"
