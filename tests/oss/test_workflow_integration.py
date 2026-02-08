@@ -49,5 +49,5 @@ async def test_workflow_phase_transition(test_config, temp_dir):
     workflow.state.phase = WorkflowPhase.PLANNING
     
     # Mark complete - should transition to implementation
-    workflow.mark_phase_complete(WorkflowPhase.PLANNING)
+    await workflow.mark_phase_complete(WorkflowPhase.PLANNING)
     assert workflow.state.phase == WorkflowPhase.IMPLEMENTATION

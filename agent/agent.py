@@ -2,7 +2,7 @@ from __future__ import annotations
 from typing import AsyncGenerator, Awaitable, Callable
 from agent.events import AgentEvent, AgentEventType
 from agent.session import Session
-from client.response import StreamEventType, TokenUsage, ToolCall, ToolResultMessage
+from client.response import StreamEventType, TokenUsage, ToolCall, ToolResultMessage, parse_tool_call_arguments
 from config.config import Config
 from prompts.system import create_loop_breaker_prompt
 from tools.base import ToolConfirmation
@@ -66,6 +66,11 @@ class Agent:
                         content = event.text_delta.content
                         response_text += content
                         yield AgentEvent.text_delta(content)
+                elif event.type == StreamEventType.TOOL_CALL_START:
+                    # Don't emit TOOL_CALL_START during streaming - wait for complete tool call
+                    # The complete tool call will be emitted after MESSAGE_COMPLETE
+                    # This prevents showing incomplete arguments in CLI
+                    pass
                 elif event.type == StreamEventType.TOOL_CALL_COMPLETE:
                     if event.tool_call:
                         tool_calls.append(event.tool_call)
@@ -112,21 +117,30 @@ class Agent:
             tool_call_results: list[ToolResultMessage] = []
 
             for tool_call in tool_calls:
+                if not tool_call.name:
+                    continue  # Skip tool calls without names
+                
+                # Parse arguments from string to dict
+                if isinstance(tool_call.arguments, str):
+                    parsed_args = parse_tool_call_arguments(tool_call.arguments)
+                else:
+                    parsed_args = tool_call.arguments or {}
+                
                 yield AgentEvent.tool_call_start(
                     tool_call.call_id,
                     tool_call.name,
-                    tool_call.arguments,
+                    parsed_args,
                 )
 
                 self.session.loop_detector.record_action(
                     "tool_call",
                     tool_name=tool_call.name,
-                    args=tool_call.arguments,
+                    args=parsed_args,
                 )
 
                 result = await self.session.tool_registry.invoke(
                     tool_call.name,
-                    tool_call.arguments,
+                    parsed_args,
                     self.config.cwd,
                     self.session.hook_system,
                     self.session.approval_manager,
