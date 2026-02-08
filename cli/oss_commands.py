@@ -543,34 +543,61 @@ def oss_status(ctx: click.Context):
     # Get current branch
     current_branch = memory_manager.get_current_branch()
     
-    console.print("\n[bold]OSS Workflow Status[/bold]")
-    console.print("─" * 50)
+    # Beautiful status display
+    status_table = Table.grid(padding=(0, 2))
+    status_table.add_column(style="cyan bold", justify="right", width=15)
+    status_table.add_column(style="white")
     
     if current_branch:
-        console.print(f"  Branch: [cyan]{current_branch}[/cyan]")
+        status_table.add_row("Branch:", f"[green]{current_branch}[/green]")
     else:
-        console.print("  Branch: [dim]Not in a git repository[/dim]")
+        status_table.add_row("Branch:", "[dim]Not in a git repository[/dim]")
     
     if phase_info.get('issue_number'):
-        console.print(f"  Issue: [cyan]#{phase_info['issue_number']}[/cyan]")
+        status_table.add_row("Issue:", f"[bold]#{phase_info['issue_number']}[/bold]")
         if phase_info.get('issue_url'):
-            console.print(f"  URL: [dim]{phase_info['issue_url']}[/dim]")
+            status_table.add_row("URL:", f"[dim]{phase_info['issue_url']}[/dim]")
     
-    console.print(f"  Phase: [yellow]{phase_info['phase']}[/yellow]")
-    console.print(f"  Changes Made: {'[green]Yes[/green]' if phase_info.get('changes_made') else '[dim]No[/dim]'}")
-    console.print(f"  Tests Passed: {'[green]Yes[/green]' if phase_info.get('tests_passed') else '[dim]No[/dim]'}")
+    status_table.add_row("Phase:", f"[yellow]{phase_info['phase'].replace('_', ' ').title()}[/yellow]")
+    status_table.add_row("Changes:", "[green]✓ Yes[/green]" if phase_info.get('changes_made') else "[dim]No[/dim]")
+    status_table.add_row("Tests:", "[green]✓ Passed[/green]" if phase_info.get('tests_passed') else "[dim]Not run[/dim]")
     
     if phase_info.get('pr_url'):
-        console.print(f"  PR: [cyan]{phase_info['pr_url']}[/cyan]")
+        status_table.add_row("PR:", f"[cyan]{phase_info['pr_url']}[/cyan]")
+    
+    status_panel = Panel(
+        status_table,
+        title="[bold cyan]📋 OSS Workflow Status[/bold cyan]",
+        border_style="cyan",
+        box=box.ROUNDED,
+        padding=(1, 2),
+    )
+    console.print()
+    console.print(status_panel)
     
     # Get branch summary if available
     if current_branch:
         summary = memory_manager.get_branch_summary(current_branch)
         if summary.get("exists"):
+            summary_table = Table.grid(padding=(0, 2))
+            summary_table.add_column(style="cyan bold", justify="right", width=15)
+            summary_table.add_column(style="white")
+            
             if summary.get("context_summary"):
-                console.print(f"\n  Context: [dim]{summary['context_summary']}[/dim]")
+                summary_table.add_row("Context:", f"[dim]{summary['context_summary']}[/dim]")
             if summary.get("files_modified", 0) > 0:
-                console.print(f"  Files Modified: {summary['files_modified']}")
+                summary_table.add_row("Files Modified:", f"[green]{summary['files_modified']}[/green]")
+            
+            if summary_table.rows:
+                summary_panel = Panel(
+                    summary_table,
+                    title="[bold]Branch Summary[/bold]",
+                    border_style="dim",
+                    box=box.ROUNDED,
+                    padding=(1, 2),
+                )
+                console.print()
+                console.print(summary_panel)
     
     # Show git status if in repo
     try:
@@ -582,8 +609,15 @@ def oss_status(ctx: click.Context):
             check=True,
         )
         if result.stdout.strip():
-            console.print("\n[bold]Uncommitted Changes:[/bold]")
-            console.print(result.stdout)
+            changes_panel = Panel(
+                result.stdout,
+                title="[bold]Uncommitted Changes[/bold]",
+                border_style="yellow",
+                box=box.ROUNDED,
+                padding=(1, 2),
+            )
+            console.print()
+            console.print(changes_panel)
     except Exception:
         pass
     
