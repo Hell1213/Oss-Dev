@@ -27,8 +27,8 @@ class MessageItem:
         if self.tool_calls:
             result["tool_calls"] = self.tool_calls
 
-        if self.content:
-            result["content"] = self.content
+        # Always include content field - API requires it (use empty string if None)
+        result["content"] = self.content if self.content is not None else ""
 
         return result
 
@@ -84,6 +84,12 @@ class ContextManager:
         self._messages.append(item)
 
     def add_tool_result(self, tool_call_id: str, content: str) -> None:
+        # Ensure content is never None or empty - API requires a string
+        if content is None:
+            content = ""
+        elif not isinstance(content, str):
+            content = str(content)
+        
         item = MessageItem(
             role="tool",
             content=content,
