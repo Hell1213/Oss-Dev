@@ -341,7 +341,18 @@ When working on GitHub issues, follow the 7-phase workflow:
 6. **Validation**: Ensure fix matches issue scope
 7. **Commit & PR**: Create commit, push, open PR
 
-Use the 'workflow_orchestrator' tool to manage workflow phases.
+### CRITICAL: Phase Transitions
+
+After completing each phase, you MUST call the 'workflow_orchestrator' tool with action 'mark_phase_complete' to transition to the next phase. The workflow will NOT automatically advance - you must explicitly mark each phase complete.
+
+Example workflow:
+1. Complete Phase 3 (Planning) → Call: `workflow_orchestrator(action='mark_phase_complete')`
+2. Workflow transitions to Phase 4 (Implementation)
+3. Complete Phase 4 → Call: `workflow_orchestrator(action='mark_phase_complete')`
+4. Workflow transitions to Phase 5 (Verification)
+5. Continue this pattern through all phases
+
+Use 'workflow_orchestrator' tool with action 'get_status' to check current workflow state at any time.
 
 ## Commit Message Style
 
