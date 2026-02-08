@@ -203,11 +203,11 @@ Use 'workflow_orchestrator' tool with action 'get_status' to check current workf
                 try:
                     async for event in event_stream:
                         if event.type == AgentEventType.TEXT_DELTA:
-                        # Suppress verbose LLM output - only log to debug
-                        logger.debug(f"LLM text delta: {event.data.get('content', '')[:50]}...")
-                        # Don't print to console - too verbose
-                        pass
-                    elif event.type == AgentEventType.TEXT_COMPLETE:
+                            # Suppress verbose LLM output - only log to debug
+                            logger.debug(f"LLM text delta: {event.data.get('content', '')[:50]}...")
+                            # Don't print to console - too verbose
+                            pass
+                        elif event.type == AgentEventType.TEXT_COMPLETE:
                         # Suppress verbose LLM output
                         logger.debug(f"LLM text complete")
                         # Don't print to console - too verbose
