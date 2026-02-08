@@ -208,50 +208,50 @@ Use 'workflow_orchestrator' tool with action 'get_status' to check current workf
                             # Don't print to console - too verbose
                             pass
                         elif event.type == AgentEventType.TEXT_COMPLETE:
-                        # Suppress verbose LLM output
-                        logger.debug(f"LLM text complete")
-                        # Don't print to console - too verbose
-                        pass
-                    elif event.type == AgentEventType.TOOL_CALL_START:
-                        tool_name = event.data.get("name", "unknown")
-                        tool_args = event.data.get("arguments", {})
-                        
-                        # Log tool call
-                        logger.debug(f"Tool call started: {tool_name} with args: {tool_args}")
-                        
-                        # Special handling for workflow_orchestrator to show phase transitions
-                        if tool_name == "workflow_orchestrator":
-                            action = tool_args.get("action", "unknown") if isinstance(tool_args, dict) else "unknown"
-                            if action == "mark_phase_complete":
-                                # Show phase completion
-                                console.print(f"\n[green]✓[/green] [bold]Phase Complete:[/bold] {current_phase_display}")
-                            elif action == "get_status":
-                                # Silent - just checking status
-                                pass
+                            # Suppress verbose LLM output
+                            logger.debug(f"LLM text complete")
+                            # Don't print to console - too verbose
+                            pass
+                        elif event.type == AgentEventType.TOOL_CALL_START:
+                            tool_name = event.data.get("name", "unknown")
+                            tool_args = event.data.get("arguments", {})
+                            
+                            # Log tool call
+                            logger.debug(f"Tool call started: {tool_name} with args: {tool_args}")
+                            
+                            # Special handling for workflow_orchestrator to show phase transitions
+                            if tool_name == "workflow_orchestrator":
+                                action = tool_args.get("action", "unknown") if isinstance(tool_args, dict) else "unknown"
+                                if action == "mark_phase_complete":
+                                    # Show phase completion
+                                    console.print(f"\n[green]✓[/green] [bold]Phase Complete:[/bold] {current_phase_display}")
+                                elif action == "get_status":
+                                    # Silent - just checking status
+                                    pass
+                                else:
+                                    logger.info(f"Workflow orchestrator called: action={action}")
                             else:
-                                logger.info(f"Workflow orchestrator called: action={action}")
-                        else:
-                            # Only show tool name if it's different from last one (avoid spam)
-                            if tool_name != last_tool_name:
-                                tool_call_count += 1
-                                # Show tool name but keep it minimal
-                                if tool_call_count <= 3 or tool_name in ["git_branch", "git_commit", "git_push", "create_pr"]:
-                                    console.print(f"[dim]→ {tool_name}[/dim]")
-                                last_tool_name = tool_name
-                    elif event.type == AgentEventType.TOOL_CALL_COMPLETE:
-                        tool_name = event.data.get("name", "unknown")
-                        result = event.data.get("output", "")
-                        success = event.data.get("success", False)
-                        
-                        # Log tool completion
-                        logger.debug(f"Tool call completed: {tool_name}, success={success}")
-                        
-                        # Reset last tool name for next iteration
-                        if tool_name == last_tool_name:
-                            last_tool_name = None
-                        
-                        # Handle user confirmation requests
-                        if tool_name == "user_confirm" and "CONFIRMATION_REQUIRED" in result:
+                                # Only show tool name if it's different from last one (avoid spam)
+                                if tool_name != last_tool_name:
+                                    tool_call_count += 1
+                                    # Show tool name but keep it minimal
+                                    if tool_call_count <= 3 or tool_name in ["git_branch", "git_commit", "git_push", "create_pr", "create_start_here"]:
+                                        console.print(f"[dim]→ {tool_name}[/dim]")
+                                    last_tool_name = tool_name
+                        elif event.type == AgentEventType.TOOL_CALL_COMPLETE:
+                            tool_name = event.data.get("name", "unknown")
+                            result = event.data.get("output", "")
+                            success = event.data.get("success", False)
+                            
+                            # Log tool completion
+                            logger.debug(f"Tool call completed: {tool_name}, success={success}")
+                            
+                            # Reset last tool name for next iteration
+                            if tool_name == last_tool_name:
+                                last_tool_name = None
+                            
+                            # Handle user confirmation requests
+                            if tool_name == "user_confirm" and "CONFIRMATION_REQUIRED" in result:
                                 # Extract confirmation message
                                 lines = result.split("\n")
                                 confirm_msg = ""
