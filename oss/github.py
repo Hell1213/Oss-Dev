@@ -249,7 +249,7 @@ class GitHubClient:
     ) -> dict[str, Any]:
         """Create PR using GitHub API directly."""
         # Placeholder for future API calls to GitHub.
-            raise NotImplementedError(
+        raise NotImplementedError(
             "Direct GitHub API calls not yet implemented. "
             "Please install GitHub CLI: sudo apt install gh && gh auth login"
         )
