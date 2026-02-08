@@ -10,6 +10,14 @@ class ModelConfig(BaseModel):
     name: str = "mistralai/devstral-2512:free"
     temperature: float = Field(default=1, ge=0.0, le=2.0)
     context_window: int = 256_000
+    api_key: str | None = Field(
+        default=None,
+        description="API key for LLM service (can also be set via API_KEY env var)",
+    )
+    base_url: str | None = Field(
+        default=None,
+        description="Base URL for LLM API (can also be set via BASE_URL env var)",
+    )
 
 
 class ShellEnvironmentPolicy(BaseModel):
@@ -142,10 +150,20 @@ class Config(BaseModel):
 
     @property
     def api_key(self) -> str | None:
+        """Get API key from config file first, then environment variable."""
+        # Try config file first
+        if self.model.api_key:
+            return self.model.api_key
+        # Fall back to environment variable
         return os.environ.get("API_KEY")
 
     @property
     def base_url(self) -> str | None:
+        """Get base URL from config file first, then environment variable."""
+        # Try config file first
+        if self.model.base_url:
+            return self.model.base_url
+        # Fall back to environment variable
         return os.environ.get("BASE_URL")
 
     @property
@@ -175,7 +193,9 @@ class Config(BaseModel):
         errors: list[str] = []
 
         if not self.api_key:
-            errors.append("No API key found. Set API_KEY environment variable")
+            errors.append(
+                "No API key found. Set API_KEY environment variable or add 'api_key' to [model] section in .ai-agent/config.toml"
+            )
 
         if not self.cwd.exists():
             errors.append(f"Working directory does not exist: {self.cwd}")

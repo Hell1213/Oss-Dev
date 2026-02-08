@@ -152,9 +152,11 @@ class LLMClient:
                             "arguments": "",
                         }
 
-                        if tool_call_delta.function:
-                            if tool_call_delta.function.name:
-                                tool_calls[idx]["name"] = tool_call_delta.function.name
+                    if tool_call_delta.function:
+                        if tool_call_delta.function.name:
+                            tool_calls[idx]["name"] = tool_call_delta.function.name
+                            # Emit start event when we first get the name
+                            if tool_calls[idx]["name"]:
                                 yield StreamEvent(
                                     type=StreamEventType.TOOL_CALL_START,
                                     tool_call_delta=ToolCallDelta(
@@ -164,28 +166,28 @@ class LLMClient:
                                 )
 
                         if tool_call_delta.function.arguments:
-                            tool_calls[idx][
-                                "arguments"
-                            ] += tool_call_delta.function.arguments
-
+                            tool_calls[idx]["arguments"] += tool_call_delta.function.arguments
+                            # Emit delta event for arguments
                             yield StreamEvent(
                                 type=StreamEventType.TOOL_CALL_DELTA,
                                 tool_call_delta=ToolCallDelta(
                                     call_id=tool_calls[idx]["id"],
-                                    name=tool_call_delta.function.name,
+                                    name=tool_calls[idx]["name"] or tool_call_delta.function.name or "",
                                     arguments_delta=tool_call_delta.function.arguments,
                                 ),
                             )
 
-        for idx, tc in tool_calls.items():
-            yield StreamEvent(
-                type=StreamEventType.TOOL_CALL_COMPLETE,
-                tool_call=ToolCall(
-                    call_id=tc["id"],
-                    name=tc["name"],
-                    arguments=parse_tool_call_arguments(tc["arguments"]),
-                ),
-            )
+        # Emit complete events for all tool calls (only if name is set)
+        for idx, tc in sorted(tool_calls.items()):
+            if tc["name"]:  # Only emit if we have a name
+                yield StreamEvent(
+                    type=StreamEventType.TOOL_CALL_COMPLETE,
+                    tool_call=ToolCall(
+                        call_id=tc["id"],
+                        name=tc["name"],
+                        arguments=tc["arguments"],  # Keep as string, will be parsed later
+                    ),
+                )
 
         yield StreamEvent(
             type=StreamEventType.MESSAGE_COMPLETE,
