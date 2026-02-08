@@ -108,6 +108,25 @@ class OSSWorkflow:
         # Parse issue URL
         issue_data = self.github_client.parse_issue_url(issue_url)
         self.state.issue_number = issue_data.get("issue_number")
+        
+        # Check if branch already exists for this issue
+        if self.state.issue_number:
+            expected_branch = self.config.oss.branch_naming_pattern.format(number=self.state.issue_number)
+            # Check if branch exists
+            try:
+                import subprocess
+                result = subprocess.run(
+                    ["git", "rev-parse", "--verify", f"refs/heads/{expected_branch}"],
+                    cwd=self.repository_path,
+                    capture_output=True,
+                    check=False,
+                )
+                if result.returncode == 0:
+                    # Branch exists - reuse it
+                    self.state.branch_name = expected_branch
+                    logger.info(f"Reusing existing branch: {expected_branch}")
+            except Exception as e:
+                logger.debug(f"Could not check branch existence: {e}")
 
         # Execute phases 1-2 immediately (these use tools directly)
         await self._phase_repository_understanding()

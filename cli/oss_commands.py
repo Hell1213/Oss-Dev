@@ -18,6 +18,9 @@ from rich.rule import Rule
 from rich.text import Text
 from rich import box
 from rich.align import Align
+from rich.spinner import Spinner
+from rich.live import Live
+from rich.status import Status
 
 console = Console()
 logger = logging.getLogger(__name__)
@@ -184,13 +187,28 @@ The workflow will automatically transition to the next phase when you mark the c
 
 Use 'workflow_orchestrator' tool with action 'get_status' to check current workflow state at any time."""
             
+            # Track current phase for display
+            current_phase_display = state.phase.value.replace("_", " ").title()
+            last_tool_name = None
+            tool_call_count = 0
+            status = None
+            
             # Run Agent with workflow guidance
             async with Agent(config) as agent:
+                # Show initial phase
+                console.print(f"\n[bold cyan]📋 Phase: {current_phase_display}[/bold cyan]\n")
+                
                 async for event in agent.run(initial_message):
                     if event.type == AgentEventType.TEXT_DELTA:
-                        console.print(event.data.get("content", ""), end="")
+                        # Suppress verbose LLM output - only log to debug
+                        logger.debug(f"LLM text delta: {event.data.get('content', '')[:50]}...")
+                        # Don't print to console - too verbose
+                        pass
                     elif event.type == AgentEventType.TEXT_COMPLETE:
-                        console.print(event.data.get("content", ""))
+                        # Suppress verbose LLM output
+                        logger.debug(f"LLM text complete")
+                        # Don't print to console - too verbose
+                        pass
                     elif event.type == AgentEventType.TOOL_CALL_START:
                         tool_name = event.data.get("name", "unknown")
                         tool_args = event.data.get("arguments", {})
@@ -201,17 +219,22 @@ Use 'workflow_orchestrator' tool with action 'get_status' to check current workf
                         # Special handling for workflow_orchestrator to show phase transitions
                         if tool_name == "workflow_orchestrator":
                             action = tool_args.get("action", "unknown") if isinstance(tool_args, dict) else "unknown"
-                            action_text = Text("🔄 ", style="cyan")
-                            action_text.append("Workflow Action", style="bold cyan")
-                            action_text.append(f": {action}", style="cyan")
-                            console.print()
-                            console.print(Rule(action_text, style="cyan"))
-                            logger.info(f"Workflow orchestrator called: action={action}")
+                            if action == "mark_phase_complete":
+                                # Show phase completion
+                                console.print(f"\n[green]✓[/green] [bold]Phase Complete:[/bold] {current_phase_display}")
+                            elif action == "get_status":
+                                # Silent - just checking status
+                                pass
+                            else:
+                                logger.info(f"Workflow orchestrator called: action={action}")
                         else:
-                            tool_text = Text("🔧 ", style="dim")
-                            tool_text.append(f"Using tool: {tool_name}", style="dim")
-                            console.print()
-                            console.print(tool_text)
+                            # Only show tool name if it's different from last one (avoid spam)
+                            if tool_name != last_tool_name:
+                                tool_call_count += 1
+                                # Show tool name but keep it minimal
+                                if tool_call_count <= 3 or tool_name in ["git_branch", "git_commit", "git_push", "create_pr"]:
+                                    console.print(f"[dim]→ {tool_name}[/dim]")
+                                last_tool_name = tool_name
                     elif event.type == AgentEventType.TOOL_CALL_COMPLETE:
                         tool_name = event.data.get("name", "unknown")
                         result = event.data.get("output", "")
@@ -219,6 +242,10 @@ Use 'workflow_orchestrator' tool with action 'get_status' to check current workf
                         
                         # Log tool completion
                         logger.debug(f"Tool call completed: {tool_name}, success={success}")
+                        
+                        # Reset last tool name for next iteration
+                        if tool_name == last_tool_name:
+                            last_tool_name = None
                         
                         # Handle user confirmation requests
                         if tool_name == "user_confirm" and "CONFIRMATION_REQUIRED" in result:
@@ -298,36 +325,18 @@ Use 'workflow_orchestrator' tool with action 'get_status' to check current workf
                                             new_phase = line.split("Transitioned to:")[-1].strip()
                                             break
                                 
-                                # Create beautiful phase transition panel
-                                transition_table = Table.grid(padding=(0, 1))
-                                transition_table.add_column(style="green bold", justify="right")
-                                transition_table.add_column(style="white")
-                                
-                                transition_table.add_row("✓", "Phase transition successful")
                                 if new_phase:
-                                    phase_display = new_phase.replace("_", " ").title()
-                                    transition_table.add_row("→", f"[bold cyan]{phase_display}[/bold cyan]")
-                                
-                                transition_panel = Panel(
-                                    transition_table,
-                                    border_style="green",
-                                    box=box.ROUNDED,
-                                    padding=(1, 2),
-                                )
-                                console.print()
-                                console.print(transition_panel)
-                                console.print()
-                                
-                                logger.info(f"Phase transition completed successfully via {tool_name}")
-                                if new_phase:
-                                    logger.info(f"New workflow phase: {new_phase}")
-                                
-                                # Show the new phase prompt if present
-                                if "=== NEW PHASE:" in result:
-                                    console.print("[dim]New phase instructions received. Agent will continue...[/dim]\n")
+                                    current_phase_display = new_phase.replace("_", " ").title()
+                                    # Show new phase with spinner
+                                    console.print(f"\n[bold cyan]→ Next Phase: {current_phase_display}[/bold cyan]\n")
+                                    logger.info(f"Phase transition: {new_phase}")
                         else:
-                            # Minimal tool complete indicator
-                            pass  # Don't print anything for regular tools - keep it clean
+                            # Minimal tool complete indicator - only for important tools
+                            if tool_name in ["git_branch", "git_commit", "git_push", "create_pr", "create_start_here"]:
+                                if success:
+                                    console.print(f"[green]✓[/green] [dim]{tool_name} completed[/dim]")
+                                else:
+                                    console.print(f"[red]✗[/red] [dim]{tool_name} failed[/dim]")
                     elif event.type == AgentEventType.AGENT_ERROR:
                         console.print(f"\n[error]{event.data.get('error', 'Unknown error')}[/error]")
             
