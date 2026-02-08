@@ -16,11 +16,14 @@ from pathlib import Path
 from typing import Any, Optional
 from dataclasses import dataclass, field
 from datetime import datetime
+import logging
 
 from config.config import Config
 from oss.repository import RepositoryManager
 from oss.memory import BranchMemoryManager
 from oss.github import GitHubClient
+
+logger = logging.getLogger(__name__)
 
 
 class WorkflowPhase(str, Enum):
@@ -222,16 +225,17 @@ class OSSWorkflow:
         """Phase 4: Implement the fix."""
         self.state.phase = WorkflowPhase.IMPLEMENTATION
 
-        # Create/checkout branch if needed
+        # Generate branch name (agent will create it via git_branch tool)
         if not self.state.branch_name:
             self.state.branch_name = await self._create_feature_branch()
+            logger.info(f"Generated branch name for implementation: {self.state.branch_name}")
 
         # Implementation will be done via tools orchestrated by Agent
         # This method sets the phase - actual implementation happens via Agent
         # The Agent will use tools to make code changes
         
-        # Track files modified via git status
-        await self._track_modified_files()
+        # Note: File tracking happens after agent makes changes
+        # We'll track files when agent marks phase complete or during validation
 
         self.state.updated_at = datetime.now()
         self.save_state()
@@ -353,13 +357,15 @@ class OSSWorkflow:
         if self.state.start_here_exists:
             return (
                 "Repository has been analyzed. START_HERE.md exists. "
-                "Review the repository structure and proceed to issue intake."
+                "Review the repository structure and proceed to issue intake.\n\n"
+                "When ready, call 'workflow_orchestrator' with action 'mark_phase_complete' to move to Phase 2."
             )
         else:
             return (
                 "Analyze the repository structure. Use 'analyze_repository' tool to understand "
                 "the codebase architecture, entry points, test strategy, and CI setup. "
-                "Create START_HERE.md if it doesn't exist."
+                "Create START_HERE.md if it doesn't exist.\n\n"
+                "When analysis is complete, call 'workflow_orchestrator' with action 'mark_phase_complete' to move to Phase 2."
             )
 
     def _get_issue_intake_prompt(self) -> str:
@@ -403,7 +409,22 @@ Planning Requirements:
 5. Explain why each area matters
 6. Identify potential edge cases
 
-CRITICAL: Do NOT write any code yet. Only plan. If the fix scope is unclear, ask ONE precise clarification question."""
+CRITICAL: Do NOT write any code yet. Only plan. If the fix scope is unclear, ask ONE precise clarification question.
+
+## Phase Completion - REQUIRED ACTION
+When you have completed your planning, you MUST call the tool to transition to the next phase.
+
+**You MUST call this tool now (do not just describe it, actually call it):**
+```
+workflow_orchestrator(action='mark_phase_complete')
+```
+
+**Important**: 
+- You must ACTUALLY CALL the tool, not just describe calling it
+- Use the exact tool name: `workflow_orchestrator`
+- Use the exact action: `mark_phase_complete`
+- This will transition the workflow to Phase 4: Implementation
+- The workflow will provide the next phase prompt automatically"""
 
         return prompt
 
@@ -413,29 +434,120 @@ CRITICAL: Do NOT write any code yet. Only plan. If the fix scope is unclear, ask
             return "Planning is required before implementation. Complete planning phase first."
 
         issue_title = self.state.issue_data.get("title", "Unknown") if self.state.issue_data else "Unknown"
+        
+        # Generate expected branch name
+        if self.state.issue_number:
+            expected_branch = self.config.oss.branch_naming_pattern.format(number=self.state.issue_number)
+        else:
+            expected_branch = "fix/issue-unknown"
 
-        prompt = f"""Implement the fix for issue: {issue_title}
+        prompt = f"""# Phase 4: Implementation
 
-Current branch: {self.state.branch_name or 'Not created yet'}
+Implement the fix for issue: {issue_title}
 
-Implementation Rules (STRICT):
-- Stay strictly within issue scope
-- Do NOT add irrelevant comments
-- Do NOT reformat unrelated files
-- Do NOT do drive-by refactors
-- Fix core logic, not symptoms
-- No patch-work fixes
-- Use existing patterns in repo
-- Keep diffs minimal and intentional
+## ⚠️ CRITICAL: MANDATORY WORK REQUIREMENTS
 
-Steps:
-1. Ensure you're on the correct branch (use 'git_branch' tool if needed)
-2. Make minimal code changes required
-3. Follow existing code patterns
-4. Add necessary tests
-5. Update documentation if needed
+**YOU CANNOT MARK THIS PHASE COMPLETE UNLESS:**
+1. ✅ You have created and switched to feature branch `{expected_branch}`
+2. ✅ You have made actual code changes using 'edit' or 'write_file' tools
+3. ✅ At least one file has been modified to fix the issue
+4. ✅ You are NOT on main/master branch
 
-After making changes, proceed to verification phase."""
+**The workflow will VALIDATE these requirements. If validation fails, you will receive an error and must complete the work before trying again.**
+
+## STEP 1: Create Feature Branch (MANDATORY FIRST STEP)
+
+**You MUST do this FIRST, before any code changes:**
+
+1. Check current branch:
+   ```
+   git_branch(action='current')
+   ```
+
+2. Create feature branch:
+   ```
+   git_branch(action='create', branch_name='{expected_branch}')
+   ```
+   (This automatically switches to the new branch)
+
+3. Verify you're on the branch:
+   ```
+   git_branch(action='current')
+   ```
+   Should show: `{expected_branch}`
+
+**DO NOT proceed to code changes until you are on the feature branch!**
+
+## STEP 2: Make Code Changes (MANDATORY)
+
+**You MUST make actual code changes to fix the issue. The workflow validates this.**
+
+Based on your plan, make the necessary changes:
+
+1. **Use 'edit' tool** for precise edits:
+   ```
+   edit(file_path='path/to/file.py', old_string='old code', new_string='new code')
+   ```
+
+2. **Use 'write_file' tool** for new files or complete rewrites:
+   ```
+   write_file(file_path='path/to/file.py', contents='file content')
+   ```
+
+3. **Follow these rules STRICTLY:**
+   - ✅ Stay strictly within issue scope
+   - ✅ Fix core logic, not symptoms
+   - ✅ Use existing patterns in repo
+   - ✅ Keep diffs minimal and intentional
+   - ❌ Do NOT add irrelevant comments
+   - ❌ Do NOT reformat unrelated files
+   - ❌ Do NOT do drive-by refactors
+   - ❌ No patch-work fixes
+
+## STEP 3: Verify Changes (BEFORE marking complete)
+
+Before calling `mark_phase_complete`, verify:
+
+1. **Check git status**:
+   ```
+   git_status()
+   ```
+   Should show modified files
+
+2. **Check current branch**:
+   ```
+   git_branch(action='current')
+   ```
+   Must be `{expected_branch}`, NOT main/master
+
+3. **Review your changes**:
+   ```
+   git_diff()
+   ```
+   Ensure changes are correct and within scope
+
+## Phase Completion - VALIDATION GATE
+
+**ONLY call this when ALL requirements are met:**
+
+```
+workflow_orchestrator(action='mark_phase_complete')
+```
+
+**What happens:**
+1. Workflow validates:
+   - ✅ You're on feature branch (not main/master)
+   - ✅ Files have been modified
+   - ✅ At least one existing file was changed
+2. If validation passes → Transition to Verification phase
+3. If validation fails → You'll get an error message explaining what's missing
+
+**DO NOT call mark_phase_complete until you have:**
+- ✅ Created and switched to branch `{expected_branch}`
+- ✅ Made actual code changes using 'edit' or 'write_file'
+- ✅ Verified changes with git_status and git_diff
+
+**Remember: The workflow enforces these requirements. You cannot skip them.**"""
 
         return prompt
 
@@ -443,26 +555,71 @@ After making changes, proceed to verification phase."""
         """Get prompt for verification phase."""
         analysis = self.state.repository_analysis or {}
         test_strategy = analysis.get("test_strategy", {})
+        start_here_path = analysis.get("start_here_path")
 
-        prompt = "Verify the fix with tests.\n\n"
+        prompt = "# Phase 5: Verification\n\n"
+        prompt += "Verify the fix with tests.\n\n"
 
+        # Test command discovery
         if test_strategy:
-            prompt += "Test commands identified:\n"
+            prompt += "## Test Commands Identified:\n"
             for test_type, command in test_strategy.items():
-                prompt += f"- {test_type}: {command}\n"
+                prompt += f"- **{test_type}**: `{command}`\n"
             prompt += "\n"
         else:
-            prompt += "No test strategy identified. Check START_HERE.md or CONTRIBUTING.md for test commands.\n\n"
+            prompt += "## Test Command Discovery:\n"
+            prompt += "No test strategy automatically identified.\n\n"
+            prompt += "**Action Required**:\n"
+            prompt += "1. Read START_HERE.md using 'read_file' tool to find test commands\n"
+            if start_here_path:
+                prompt += f"   - File path: `{start_here_path}`\n"
+            else:
+                prompt += "   - File path: `START_HERE.md` (in repository root)\n"
+            prompt += "2. Check CONTRIBUTING.md if START_HERE.md doesn't have test info\n"
+            prompt += "3. Look for sections like 'Testing', 'How to Run Tests', or 'Test Commands'\n"
+            prompt += "4. Extract the test command(s) and run them using 'shell' tool\n\n"
 
-        prompt += (
-            "Verification Steps:\n"
-            "1. Run the test suite using identified test commands\n"
-            "2. If tests fail, fix regressions immediately\n"
-            "3. Re-run tests until all pass\n"
-            "4. For UI changes, verify visually if possible\n"
-            "5. Document any known limitations\n\n"
-            "After verification passes, proceed to validation phase."
-        )
+        prompt += "## Verification Steps:\n\n"
+        prompt += "1. **Run Tests**:\n"
+        if test_strategy:
+            prompt += "   - Use 'shell' tool to execute the identified test commands\n"
+            prompt += "   - Example: `shell(command='pytest')` or `shell(command='npm test')`\n"
+        else:
+            prompt += "   - First, discover test commands from START_HERE.md\n"
+            prompt += "   - Then use 'shell' tool to execute them\n"
+        prompt += "   - Capture and analyze test output\n\n"
+        
+        prompt += "2. **Handle Test Failures**:\n"
+        prompt += "   - If tests fail, analyze the error messages carefully\n"
+        prompt += "   - Identify which tests failed and why\n"
+        prompt += "   - Determine if failures are:\n"
+        prompt += "     * Related to your changes (regression) → Fix immediately\n"
+        prompt += "     * Pre-existing failures (unrelated) → Document in PR\n"
+        prompt += "   - Fix regressions by updating your implementation\n"
+        prompt += "   - Re-run tests after fixes\n\n"
+        
+        prompt += "3. **Iterate Until Pass**:\n"
+        prompt += "   - Re-run tests after each fix\n"
+        prompt += "   - Continue until all tests pass\n"
+        prompt += "   - Maximum 3 iterations to avoid infinite loops\n"
+        prompt += "   - If tests still fail after 3 attempts, document limitations\n\n"
+        
+        prompt += "4. **Additional Verification** (if applicable):\n"
+        prompt += "   - For UI changes: Verify visually if possible\n"
+        prompt += "   - For API changes: Test endpoints manually if needed\n"
+        prompt += "   - For library changes: Test import/usage\n\n"
+        
+        prompt += "5. **Documentation**:\n"
+        prompt += "   - Document any known limitations\n"
+        prompt += "   - Note any skipped tests and reasons\n"
+        prompt += "   - Record test results for PR description\n\n"
+
+        prompt += "## Phase Completion\n"
+        prompt += "When all tests pass and verification is complete:\n"
+        prompt += "1. Verify test results are successful\n"
+        prompt += "2. Call 'workflow_orchestrator' with action 'mark_phase_complete'\n"
+        prompt += "3. This will transition to Phase 6: Validation\n"
+        prompt += "4. The workflow will provide the next phase prompt automatically"
 
         return prompt
 
@@ -470,24 +627,78 @@ After making changes, proceed to verification phase."""
         """Get prompt for validation phase."""
         issue_title = self.state.issue_data.get("title", "Unknown") if self.state.issue_data else "Unknown"
         issue_body = self.state.issue_data.get("body", "") if self.state.issue_data else ""
+        issue_number = self.state.issue_number
 
-        prompt = f"""Validate the fix against the original issue requirements.
+        prompt = f"""# Phase 6: Validation
 
-Original Issue:
-Title: {issue_title}
-Description: {issue_body[:300]}{'...' if len(issue_body) > 300 else ''}
+Validate the fix against the original issue requirements.
 
-Validation Steps:
-1. Use 'git_status' to see all changes
-2. Use 'git_diff' to review the diff
-3. Re-read the original issue
-4. Explicitly verify:
-   - Does this fully resolve what was asked?
-   - Did I avoid unrelated changes?
-   - Are there any edge cases I missed?
+## Original Issue Context
+**Issue #{issue_number}**: {issue_title}
 
-If the fix doesn't match the issue scope, adjust before committing.
-After validation passes, proceed to commit and PR phase."""
+**Description**:
+{issue_body[:500]}{'...' if len(issue_body) > 500 else ''}
+
+## CRITICAL: Scope Validation
+
+Before committing, you MUST validate that your changes:
+1. ✅ **Fully resolve the issue** - Does the fix address what was asked?
+2. ✅ **Stay within scope** - Are there any unrelated changes?
+3. ✅ **Handle edge cases** - Are there any scenarios you missed?
+
+## Validation Steps (MANDATORY):
+
+### Step 1: Review All Changes
+1. **Check git status**: Use `git_status` tool to see all modified, staged, and untracked files
+2. **Review diff**: Use `git_diff` tool to see the actual code changes
+   - Review both staged and unstaged changes
+   - For each file, verify the changes are related to the issue
+
+### Step 2: Re-read Original Issue
+1. **Fetch issue again**: Use `fetch_issue` tool to get the complete issue details
+2. **Compare requirements**: 
+   - What was explicitly asked?
+   - What was explicitly out of scope?
+   - Are there any acceptance criteria?
+
+### Step 3: Scope Check
+For each modified file, ask:
+- **Is this file change necessary for the issue?**
+  - ✅ YES → Keep the change
+  - ❌ NO → This is a scope violation! Remove unrelated changes
+
+**Common scope violations to watch for**:
+- ❌ Formatting changes in unrelated files
+- ❌ Adding comments/docs to unrelated code
+- ❌ Refactoring unrelated functions
+- ❌ Adding new features not requested
+- ❌ Changing test files unrelated to the fix
+
+### Step 4: Issue Resolution Check
+Verify the fix actually solves the problem:
+- **Does the code change address the root cause?**
+- **Are there edge cases not handled?**
+- **Will this fix work for all scenarios mentioned in the issue?**
+
+### Step 5: Final Verification
+1. **Review git diff one more time** - Ensure only necessary changes remain
+2. **Confirm issue requirements are met** - Check against original issue
+3. **Document any limitations** - Note anything that couldn't be fixed
+
+## If Scope Violations Found:
+1. **DO NOT commit yet**
+2. **Remove unrelated changes** using `edit` or `write_file` tools
+3. **Re-run validation** after cleanup
+4. **Only proceed when changes are scoped correctly**
+
+## Phase Completion
+When validation passes and you're ready to commit:
+1. ✅ All changes are within scope
+2. ✅ Issue requirements are fully met
+3. ✅ No unrelated changes remain
+4. Call 'workflow_orchestrator' with action 'mark_phase_complete'
+5. This will transition to Phase 7: Commit & PR
+6. The workflow will provide the next phase prompt automatically"""
 
         return prompt
 
@@ -495,37 +706,222 @@ After validation passes, proceed to commit and PR phase."""
         """Get prompt for commit and PR phase."""
         issue_number = self.state.issue_number
         issue_title = self.state.issue_data.get("title", "Unknown") if self.state.issue_data else "Unknown"
-
-        # Generate commit message
-        commit_type = "fix"  # Could be enhanced to detect type from issue labels
-        commit_scope = "auto"  # Could be enhanced to detect from changed files
+        branch_name = self.state.branch_name or "fix/issue-unknown"
+        
+        # Determine commit scope from modified files
+        analysis = self.state.repository_analysis or {}
+        files_modified = getattr(self.state, "files_modified", [])
+        
+        # Infer scope from file paths
+        commit_scope = "general"
+        if files_modified:
+            # Try to infer scope from first modified file
+            first_file = files_modified[0] if isinstance(files_modified, list) else str(files_modified).split()[0]
+            if "/" in first_file:
+                scope_candidate = first_file.split("/")[0]
+                # Common scopes
+                if scope_candidate in ["auth", "api", "cli", "config", "oss", "tools", "tests", "ui", "agent"]:
+                    commit_scope = scope_candidate
+        
+        # Generate commit subject from issue title
         commit_subject = issue_title.lower().replace(" ", "-")[:50]
+        # Remove special characters that might break commit message
+        commit_subject = "".join(c for c in commit_subject if c.isalnum() or c in "-_")
+        
+        commit_message = f"fix({commit_scope}): {commit_subject}"
 
-        prompt = f"""Create commit and open pull request.
+        prompt = f"""# Phase 7: Commit & Pull Request
 
-Issue: #{issue_number} - {issue_title}
+Create commit and open pull request for issue #{issue_number}.
 
-Commit Steps:
-1. Use 'git_status' to see all changes
-2. Stage all changes (or specific files)
-3. Create commit with message: '{commit_type}({commit_scope}): {commit_subject}'
-   Format: type(scope): brief description
-   Example: fix(auth): handle null session on refresh
-4. Push branch using 'git_push' tool
+**Issue**: {issue_title}
+**Branch**: {branch_name}
 
-PR Steps:
-1. Use 'create_pr' tool to open pull request
-2. Reference issue in PR: Fixes #{issue_number}
-3. Include:
-   - What was fixed
-   - How it was verified
-   - Any known limitations
+## Commit Steps
 
-After PR is created, workflow is complete."""
+### Step 1: Final Status Check
+1. **Review changes**: Use `git_status` tool to see all changes
+2. **Verify diff**: Use `git_diff` tool to review what will be committed
+3. **Confirm scope**: Ensure only issue-related changes are included
+
+### Step 2: Create Commit
+1. **Stage changes**: All changes should already be staged (or stage specific files if needed)
+2. **Create commit** using `git_commit` tool with message:
+
+   **Commit Message Format**: `{commit_message}`
+
+   **Conventional Commit Format**:
+   - **Type**: `fix` (for bug fixes), `feat` (for features), `docs` (for documentation)
+   - **Scope**: Component/module name (e.g., `auth`, `api`, `cli`)
+   - **Subject**: Brief description (50 chars max, lowercase, no period)
+
+   **Examples**:
+   - ✅ `fix(auth): handle null session on refresh`
+   - ✅ `fix(oss): add missing import in main.py`
+   - ✅ `feat(api): add user authentication endpoint`
+   - ❌ `Fixed the bug` (not conventional)
+   - ❌ `fix: Fixed the bug in auth module` (too long, has period)
+
+3. **Verify commit**: Check that commit was created successfully
+
+### Step 3: User Confirmation (REQUIRED)
+
+**BEFORE pushing or creating PR, you MUST ask for user confirmation:**
+
+1. **Use `user_confirm` tool** to ask user:
+   ```
+   user_confirm(message='Ready to push changes and create PR. Proceed?', default=True)
+   ```
+
+2. **Wait for user response**:
+   - If user confirms (yes): Proceed with push and PR creation
+   - If user declines (no): Skip push/PR and show manual instructions
+
+3. **Handle response**:
+   - **YES**: Continue to Step 4 (Push) and Step 5 (Create PR)
+   - **NO**: Skip to Step 6 (Manual Instructions)
+
+### Step 4: Push Branch (Only if user confirmed)
+
+**Only proceed if user confirmed YES:**
+
+1. **Push branch** using `git_push` tool
+   - Branch: `{branch_name}`
+   - This will push to remote repository
+2. **Handle errors**: If push fails (e.g., branch doesn't exist on remote), create it:
+   - Use: `git_push` with `create_remote=True` or similar option
+   - Or push with: `git push -u origin {branch_name}`
+
+## Pull Request Steps
+
+### Step 5: Create PR (Only if user confirmed)
+
+**Only proceed if user confirmed YES:**
+
+1. **Use `create_pr` tool** with the following:
+
+   **PR Title**: 
+   - Use issue title or a clear summary
+   - Example: `{issue_title}`
+
+   **PR Body** (REQUIRED - include all sections):
+   ```markdown
+   ## What was fixed
+   [Brief description of what was changed and why]
+
+   ## How it was verified
+   - [ ] Tests pass: [test command used]
+   - [ ] Manual testing: [if applicable]
+   - [ ] Edge cases handled: [if applicable]
+
+   ## Changes Made
+   - [List of key changes, one per line]
+
+   ## Known Limitations
+   [Any limitations or follow-up work needed, or "None"]
+
+   Fixes #{issue_number}
+   ```
+
+   **PR Parameters**:
+   - `title`: PR title
+   - `body`: PR description (as above)
+   - `head`: `{branch_name}` (source branch)
+   - `base`: `main` (or `master` - check repository default)
+   - `issue_number`: `{issue_number}` (to link issue)
+
+2. **Verify PR creation**: Check that PR was created and URL is returned
+
+## Important Notes
+
+### Commit Message Guidelines:
+- ✅ Keep it short and clear (50 chars for subject)
+- ✅ Use conventional format: `type(scope): subject`
+- ✅ No emojis, no fluff
+- ✅ Reference issue in PR body, not commit message
+
+### PR Description Guidelines:
+- ✅ Clearly explain what was fixed
+- ✅ Document how it was verified
+- ✅ Include issue reference: `Fixes #{issue_number}`
+- ✅ Be honest about limitations
+- ✅ Keep it professional and concise
+
+## Phase Completion
+After PR is successfully created:
+1. ✅ Commit created with proper format
+2. ✅ Branch pushed to remote
+3. ✅ PR created with complete description
+4. ✅ Issue referenced in PR
+5. Call 'workflow_orchestrator' with action 'mark_phase_complete'
+6. This will mark the workflow as COMPLETE
+7. The issue fix is now ready for maintainer review
+
+**The workflow is complete when the PR is created and all phases are done.**"""
 
         return prompt
 
-    def mark_phase_complete(self, phase: WorkflowPhase) -> None:
+    async def _validate_implementation_complete(self) -> tuple[bool, str]:
+        """
+        Validate that implementation phase work was actually completed.
+        
+        Returns:
+            (is_valid, error_message)
+        """
+        import subprocess
+        from pathlib import Path
+        
+        # Check 1: Branch must be created and we must be on it
+        try:
+            result = subprocess.run(
+                ["git", "branch", "--show-current"],
+                cwd=self.repository_path,
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            current_branch = result.stdout.strip()
+            
+            # Must not be on main/master
+            if current_branch in ["main", "master"]:
+                return False, "❌ VALIDATION FAILED: You are still on main/master branch. You MUST create and switch to a feature branch before marking implementation complete."
+            
+            # Branch should match expected pattern
+            if self.state.issue_number:
+                expected_branch = self.config.oss.branch_naming_pattern.format(number=self.state.issue_number)
+                if current_branch != expected_branch:
+                    logger.warning(f"Branch name mismatch: expected {expected_branch}, got {current_branch}")
+        except Exception as e:
+            logger.error(f"Error checking git branch: {e}")
+            return False, f"❌ VALIDATION FAILED: Could not verify git branch. Error: {e}"
+        
+        # Check 2: Files must be modified
+        try:
+            result = subprocess.run(
+                ["git", "status", "--porcelain"],
+                cwd=self.repository_path,
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            modified_files = [line for line in result.stdout.strip().split("\n") if line.strip()]
+            
+            if not modified_files:
+                return False, "❌ VALIDATION FAILED: No files have been modified. You MUST make code changes before marking implementation complete. Use 'edit' or 'write_file' tools to make changes."
+            
+            # Check that at least one file is actually modified (not just untracked)
+            has_modified = any(line.startswith(("M ", "A ", "D ")) for line in modified_files)
+            if not has_modified:
+                return False, "❌ VALIDATION FAILED: No existing files have been modified. You MUST modify the relevant files to fix the issue before marking implementation complete."
+            
+            logger.info(f"Validation passed: {len(modified_files)} files modified on branch {current_branch}")
+        except Exception as e:
+            logger.error(f"Error checking git status: {e}")
+            return False, f"❌ VALIDATION FAILED: Could not verify file changes. Error: {e}"
+        
+        return True, "✅ Validation passed: Branch created and files modified"
+
+    async def mark_phase_complete(self, phase: WorkflowPhase) -> None:
         """Mark a phase as complete and transition to next phase."""
         phase_order = [
             WorkflowPhase.REPOSITORY_UNDERSTANDING,
@@ -539,18 +935,46 @@ After PR is created, workflow is complete."""
         ]
 
         current_idx = phase_order.index(self.state.phase)
+        previous_phase = self.state.phase.value
+        
+        # VALIDATION: For implementation phase, verify work was actually done
+        if previous_phase == WorkflowPhase.IMPLEMENTATION.value:
+            is_valid, validation_message = await self._validate_implementation_complete()
+            if not is_valid:
+                error_msg = f"Cannot mark implementation phase complete. {validation_message}"
+                logger.error(error_msg)
+                raise ValueError(error_msg)
+            logger.info(validation_message)
+        
         if current_idx < len(phase_order) - 1:
             # Add completed step to memory
             branch_name = self.state.branch_name or self.branch_memory.get_current_branch()
             if branch_name:
                 self.branch_memory.add_completed_step(branch_name, f"Completed phase: {phase.value}")
             
+            # Track modified files if we just completed implementation
+            if previous_phase == WorkflowPhase.IMPLEMENTATION.value:
+                await self._track_modified_files()
+                self.state.changes_made = True
+                logger.info(f"Tracked file modifications after implementation phase")
+            
             self.state.phase = phase_order[current_idx + 1]
             self.state.updated_at = datetime.now()
             self.save_state()
+            
+            # Log phase transition
+            logger.info(
+                f"Phase transition: {previous_phase} -> {self.state.phase.value} "
+                f"(Issue #{self.state.issue_number}, Branch: {branch_name or 'N/A'})"
+            )
+        else:
+            logger.warning(f"Attempted to mark phase complete, but already at final phase: {self.state.phase.value}")
 
     def get_current_phase_info(self) -> dict[str, Any]:
         """Get information about the current phase."""
+        analysis = self.state.repository_analysis or {}
+        test_strategy = analysis.get("test_strategy", {})
+        
         return {
             "phase": self.state.phase.value,
             "issue_number": self.state.issue_number,
@@ -558,6 +982,8 @@ After PR is created, workflow is complete."""
             "changes_made": self.state.changes_made,
             "tests_passed": self.state.tests_passed,
             "pr_url": self.state.pr_url,
+            "test_strategy": test_strategy,
+            "start_here_path": analysis.get("start_here_path"),
         }
 
     def get_state(self) -> WorkflowState:
