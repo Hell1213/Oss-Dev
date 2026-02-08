@@ -5,6 +5,7 @@ Provides GitHub API client functionality using GitHub CLI (gh) as primary method
 with fallback to GitHub API when needed.
 """
 
+import json
 import re
 import subprocess
 from pathlib import Path
@@ -122,7 +123,6 @@ class GitHubClient:
                 check=True,
             )
 
-            import json
             issue_data = json.loads(result.stdout)
 
             return {
