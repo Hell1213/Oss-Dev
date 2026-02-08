@@ -128,12 +128,9 @@ class OSSWorkflow:
             except Exception as e:
                 logger.debug(f"Could not check branch existence: {e}")
 
-        # Execute phases 1-2 immediately (these use tools directly)
-        await self._phase_repository_understanding()
-        await self._phase_issue_intake()
-
-        # Transition to planning phase - Agent will handle phases 3-7
-        self.state.phase = WorkflowPhase.PLANNING
+        # Initialize phases 1-2 but let Agent work on them
+        # Don't execute automatically - Agent needs to work through all phases
+        self.state.phase = WorkflowPhase.REPOSITORY_UNDERSTANDING
         self.state.updated_at = datetime.now()
         self.save_state()
 
