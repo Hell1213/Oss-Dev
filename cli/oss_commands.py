@@ -336,6 +336,28 @@ Use 'workflow_orchestrator' tool with action 'get_status' to check current workf
                                         # Reset tool call counter for new phase
                                         tool_call_count = 0
                                         last_tool_name = None
+                                        
+                                        # Get updated phase prompt and inject it as a new message to continue
+                                        # CRITICAL: This ensures agent continues working after phase transition
+                                        try:
+                                            new_phase_prompt = workflow.get_phase_prompt()
+                                            continue_message = f"""✅ Phase transition complete! 
+
+🔄 **NEW PHASE: {new_phase.replace('_', ' ').upper()}**
+
+{new_phase_prompt}
+
+**IMPORTANT:** You MUST continue working on this phase. This is NOT the end of the workflow. Complete all required tasks for this phase, then call 'workflow_orchestrator(action='mark_phase_complete')' to proceed to the next phase.
+
+The workflow has {7 - ['repository_understanding', 'issue_intake', 'planning', 'implementation', 'verification', 'validation', 'commit_and_pr'].index(new_phase)} phases remaining. Keep working!"""
+                                            # Inject message to continue workflow - agent's next turn will pick this up
+                                            await agent.session.context_manager.add_user_message(continue_message)
+                                            logger.info(f"✅ Injected continue message for phase: {new_phase}")
+                                            # Show user that agent will continue
+                                            console.print(f"[dim]→ Agent will continue with {current_phase_display}...[/dim]")
+                                        except Exception as e:
+                                            logger.error(f"❌ Could not inject continue message: {e}")
+                                            console.print(f"[error]Warning: Could not inject continue message. Agent may stop.[/error]")
                             else:
                                 # Minimal tool complete indicator - only for important tools
                                 if tool_name in ["git_branch", "git_commit", "git_push", "create_pr", "create_start_here"]:
