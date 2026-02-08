@@ -347,10 +347,15 @@ Use 'workflow_orchestrator' tool with action 'get_status' to check current workf
                             console.print(f"\n[error]{event.data.get('error', 'Unknown error')}[/error]")
                 finally:
                     # Properly close the async generator to prevent "Task destroyed" warnings
-                    try:
-                        await event_stream.aclose()
-                    except Exception as e:
-                        logger.debug(f"Error closing event stream: {e}")
+                    if event_stream is not None:
+                        try:
+                            # Close the async generator properly
+                            await event_stream.aclose()
+                        except (GeneratorExit, StopAsyncIteration):
+                            # These are expected when closing generators
+                            pass
+                        except Exception as e:
+                            logger.debug(f"Error closing event stream: {e}")
             
         except ValueError as e:
             console.print(f"[error]Invalid issue URL: {e}[/error]")
