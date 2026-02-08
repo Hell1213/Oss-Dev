@@ -160,7 +160,7 @@ class GitHubClient:
         # This would use httpx or requests to call GitHub API
         # For now, raise an error to encourage using GitHub CLI
         # Placeholder for future API calls to GitHub.
-            raise NotImplementedError(
+        raise NotImplementedError(
             "Direct GitHub API calls not yet implemented. "
             "Please install GitHub CLI: sudo apt install gh && gh auth login"
         )
