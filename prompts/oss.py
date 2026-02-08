@@ -535,24 +535,28 @@ Create commit and open pull request for issue #{issue_number}.
 
 3. **Verify commit**: Check that commit was created successfully
 
-### Step 3: User Confirmation (REQUIRED)
+### Step 3: User Confirmation (MANDATORY - DO NOT SKIP)
 
-**BEFORE pushing or creating PR, you MUST ask for user confirmation:**
+**⚠️ CRITICAL: You MUST ask for user confirmation BEFORE pushing or creating PR.**
 
-1. **Use `user_confirm` tool** to ask user:
+**This is a REQUIRED step. You cannot proceed to push/PR without user confirmation.**
+
+1. **Call `user_confirm` tool NOW** (before any push or PR operations):
    ```
    user_confirm(message='Ready to push changes and create PR. Proceed?', default=True)
    ```
 
-2. **Wait for user response**:
-   - If user confirms (yes): Proceed with push and PR creation
-   - If user declines (no): Skip push/PR and show manual instructions
+2. **DO NOT proceed until you get the user's response:**
+   - If response is "User confirmed: YES" → Continue to Step 4 (Push) and Step 5 (Create PR)
+   - If response is "User declined: NO" → Skip to Step 6 (Manual Instructions)
 
-3. **Handle response**:
-   - **YES**: Continue to Step 4 (Push) and Step 5 (Create PR)
-   - **NO**: Skip to Step 6 (Manual Instructions)
+3. **IMPORTANT**: 
+   - You MUST call `user_confirm` tool
+   - You MUST wait for the response
+   - You MUST check the response before proceeding
+   - DO NOT call `git_push` or `create_pr` until user confirms
 
-### Step 4: Push Branch (Only if user confirmed)
+### Step 4: Push Branch (Only if user confirmed YES)
 
 **Only proceed if user confirmed YES:**
 
@@ -565,7 +569,7 @@ Create commit and open pull request for issue #{issue_number}.
 
 ## Pull Request Steps
 
-### Step 5: Create PR (Only if user confirmed)
+### Step 5: Create PR (Only if user confirmed YES)
 
 **Only proceed if user confirmed YES:**
 
@@ -632,6 +636,15 @@ All changes are ready but not pushed. To complete manually:
    - Go to: https://github.com/[owner]/[repo]/compare/{branch_name}
    - Or use: gh pr create --title "{issue_title}" --body "Fixes #{issue_number}"
 ```
+
+## ⚠️ REMINDER: User Confirmation Required
+
+**Before calling `git_push` or `create_pr`, you MUST:**
+1. Call `user_confirm` tool first
+2. Wait for user response  
+3. Only proceed if user confirmed YES
+
+**DO NOT skip the confirmation step!**
 
 ## Phase Completion
 When done (either PR created or manual instructions shown):
