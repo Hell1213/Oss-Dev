@@ -117,7 +117,22 @@ def oss_fix(ctx: click.Context, issue_url: str):
         ctx.exit(1)
     
     async def run_fix():
-        console.print(f"[bold]Starting OSS workflow for: {issue_url}[/bold]")
+        # Beautiful welcome banner
+        welcome_text = Text()
+        welcome_text.append("🚀 ", style="cyan")
+        welcome_text.append("OSS Dev Agent", style="bold cyan")
+        welcome_text.append(" - Starting workflow", style="cyan")
+        
+        welcome_panel = Panel(
+            Text(f"Issue: {issue_url}", style="white"),
+            title=welcome_text,
+            border_style="cyan",
+            box=box.ROUNDED,
+            padding=(1, 2),
+        )
+        console.print()
+        console.print(welcome_panel)
+        console.print()
         
         workflow = OSSWorkflow(config, repository_path=cwd)
         
