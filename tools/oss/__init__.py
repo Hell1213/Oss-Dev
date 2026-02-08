@@ -25,6 +25,7 @@ from tools.oss.analyze_repository import AnalyzeRepositoryTool
 from tools.oss.check_start_here import CheckStartHereTool
 from tools.oss.create_start_here import CreateStartHereTool
 from tools.oss.update_start_here import UpdateStartHereTool
+from tools.oss.user_confirm import UserConfirmTool
 from tools.oss.workflow_orchestrator import WorkflowOrchestratorTool
 from tools.oss.branch_memory import BranchMemoryTool
 
@@ -60,6 +61,8 @@ def get_oss_tools(config: Config):
             WorkflowOrchestratorTool(config),
             # Branch memory
             BranchMemoryTool(config),
+            # User confirmation
+            UserConfirmTool(config),
         ])
 
     return tools
@@ -91,4 +94,6 @@ __all__ = [
     "WorkflowOrchestratorTool",
     # Branch memory
     "BranchMemoryTool",
+    # User confirmation
+    "UserConfirmTool",
 ]
