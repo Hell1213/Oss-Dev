@@ -74,8 +74,10 @@ class GitBranchTool(Tool):
                     return ToolResult.error_result(f"Branch '{params.branch_name}' already exists")
 
                 new_branch = repo.create_head(params.branch_name)
+                # Switch to the new branch after creating it
+                repo.git.checkout(params.branch_name)
                 return ToolResult.success_result(
-                    f"Created branch '{params.branch_name}'\n"
+                    f"Created and switched to branch '{params.branch_name}'\n"
                     f"Current branch: {repo.active_branch.name}"
                 )
 
