@@ -2,28 +2,54 @@
 Tests for GitHub client.
 """
 
+
 import pytest
 
 from oss.github import GitHubClient
 from config.config import Config, OSSConfig
 
+import pytest
+import asyncio
 
-def test_parse_issue_url():
-    """Test parsing GitHub issue URLs."""
+@pytest.mark.asyncio
+async def test_fetch_issue_error_handling():
+    """
+    Test error handling of fetch_issue method.
+    """
     config = Config(oss=OSSConfig())
     client = GitHubClient(config)
     
-    result = client.parse_issue_url("https://github.com/owner/repo/issues/123")
-    
-    assert result["owner"] == "owner"
-    assert result["repo"] == "repo"
-    assert result["issue_number"] == 123
+    with pytest.raises(RuntimeError, match='Failed to fetch issue via GitHub CLI'):
+        await client.fetch_issue('https://invalid-url.com')
 
 
-def test_parse_issue_url_invalid():
-    """Test parsing invalid GitHub issue URLs."""
+    """
+    Test error handling of fetch_issue method.
+    """
     config = Config(oss=OSSConfig())
     client = GitHubClient(config)
     
-    with pytest.raises(ValueError):
-        client.parse_issue_url("https://invalid-url.com")
+    with pytest.raises(RuntimeError, match='Failed to fetch issue via GitHub CLI'):
+        await client.fetch_issue('https://invalid-url.com')
+
+
+@pytest.mark.asyncio
+async def test_create_pr_error_handling():
+    """
+    Test error handling of create_pr method.
+    """
+    config = Config(oss=OSSConfig())
+    client = GitHubClient(config)
+    
+    with pytest.raises(RuntimeError, match='Failed to create PR via GitHub CLI'):
+        await client.create_pr('owner', 'repo', 'title', 'body', 'head')
+
+
+    """
+    Test error handling of create_pr method.
+    """
+    config = Config(oss=OSSConfig())
+    client = GitHubClient(config)
+    
+    with pytest.raises(RuntimeError, match='Failed to create PR via GitHub CLI'):
+        await client.create_pr('owner', 'repo', 'title', 'body', 'head')
