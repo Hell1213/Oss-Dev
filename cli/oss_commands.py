@@ -198,8 +198,11 @@ Use 'workflow_orchestrator' tool with action 'get_status' to check current workf
                 # Show initial phase
                 console.print(f"\n[bold cyan]📋 Phase: {current_phase_display}[/bold cyan]\n")
                 
-                async for event in agent.run(initial_message):
-                    if event.type == AgentEventType.TEXT_DELTA:
+                # Use try/finally to ensure async generator is properly closed
+                event_stream = agent.run(initial_message)
+                try:
+                    async for event in event_stream:
+                        if event.type == AgentEventType.TEXT_DELTA:
                         # Suppress verbose LLM output - only log to debug
                         logger.debug(f"LLM text delta: {event.data.get('content', '')[:50]}...")
                         # Don't print to console - too verbose
@@ -249,96 +252,105 @@ Use 'workflow_orchestrator' tool with action 'get_status' to check current workf
                         
                         # Handle user confirmation requests
                         if tool_name == "user_confirm" and "CONFIRMATION_REQUIRED" in result:
-                            # Extract confirmation message
-                            lines = result.split("\n")
-                            confirm_msg = ""
-                            default_yes = True
-                            for line in lines:
-                                if line.startswith("CONFIRMATION_REQUIRED:"):
-                                    confirm_msg = line.replace("CONFIRMATION_REQUIRED:", "").strip()
-                                elif "Default:" in line:
-                                    default_yes = "yes" in line.lower()
-                            
-                            # Ask user for confirmation with beautiful formatting
-                            confirm_panel = Panel(
-                                Text(confirm_msg, style="yellow"),
-                                title="[bold yellow]❓ Confirmation Required[/bold yellow]",
-                                border_style="yellow",
-                                box=box.ROUNDED,
-                                padding=(1, 2),
-                            )
-                            console.print()
-                            console.print(confirm_panel)
-                            console.print()
-                            
-                            response = click.confirm("[bold]Proceed?[/bold]", default=default_yes)
-                            
-                            if response:
-                                success_panel = Panel(
-                                    Text("User confirmed. Proceeding with push and PR creation...", style="green"),
-                                    border_style="green",
-                                    box=box.ROUNDED,
-                                    padding=(1, 2),
-                                )
-                                console.print()
-                                console.print(success_panel)
-                                console.print()
+                                # Extract confirmation message
+                                lines = result.split("\n")
+                                confirm_msg = ""
+                                default_yes = True
+                                for line in lines:
+                                    if line.startswith("CONFIRMATION_REQUIRED:"):
+                                        confirm_msg = line.replace("CONFIRMATION_REQUIRED:", "").strip()
+                                    elif "Default:" in line:
+                                        default_yes = "yes" in line.lower()
                                 
-                                # Inject confirmation result back to agent
-                                await agent.session.context_manager.add_tool_result(
-                                    event.data.get("call_id", ""),
-                                    "User confirmed: YES. Proceed with push and PR creation."
-                                )
-                            else:
-                                branch_name = workflow.state.branch_name or "your-branch"
-                                decline_content = Text()
-                                decline_content.append("User declined. Skipping push and PR creation.\n\n", style="yellow")
-                                decline_content.append("To push manually:\n", style="dim")
-                                decline_content.append(f"  git push -u origin {branch_name}", style="cyan")
-                                
-                                decline_panel = Panel(
-                                    decline_content,
-                                    title="[bold yellow]✗ Action Declined[/bold yellow]",
+                                # Ask user for confirmation with beautiful formatting
+                                confirm_panel = Panel(
+                                    Text(confirm_msg, style="yellow"),
+                                    title="[bold yellow]❓ Confirmation Required[/bold yellow]",
                                     border_style="yellow",
                                     box=box.ROUNDED,
                                     padding=(1, 2),
                                 )
                                 console.print()
-                                console.print(decline_panel)
+                                console.print(confirm_panel)
                                 console.print()
                                 
-                                # Inject decline result back to agent
-                                await agent.session.context_manager.add_tool_result(
-                                    event.data.get("call_id", ""),
-                                    "User declined: NO. Skip push and PR creation. Show manual instructions instead."
-                                )
-                            continue
-                        
-                        # Show phase transitions prominently with beautiful formatting
-                        if tool_name == "workflow_orchestrator" and success:
-                            if "Transitioned to:" in result or "marked complete" in result.lower():
-                                # Extract new phase
-                                new_phase = None
-                                if "Transitioned to:" in result:
-                                    for line in result.split("\n"):
-                                        if "Transitioned to:" in line:
-                                            new_phase = line.split("Transitioned to:")[-1].strip()
-                                            break
+                                response = click.confirm("[bold]Proceed?[/bold]", default=default_yes)
                                 
-                                if new_phase:
-                                    current_phase_display = new_phase.replace("_", " ").title()
-                                    # Show new phase with spinner
-                                    console.print(f"\n[bold cyan]→ Next Phase: {current_phase_display}[/bold cyan]\n")
-                                    logger.info(f"Phase transition: {new_phase}")
-                        else:
-                            # Minimal tool complete indicator - only for important tools
-                            if tool_name in ["git_branch", "git_commit", "git_push", "create_pr", "create_start_here"]:
-                                if success:
-                                    console.print(f"[green]✓[/green] [dim]{tool_name} completed[/dim]")
+                                if response:
+                                    success_panel = Panel(
+                                        Text("User confirmed. Proceeding with push and PR creation...", style="green"),
+                                        border_style="green",
+                                        box=box.ROUNDED,
+                                        padding=(1, 2),
+                                    )
+                                    console.print()
+                                    console.print(success_panel)
+                                    console.print()
+                                    
+                                    # Inject confirmation result back to agent
+                                    await agent.session.context_manager.add_tool_result(
+                                        event.data.get("call_id", ""),
+                                        "User confirmed: YES. Proceed with push and PR creation."
+                                    )
                                 else:
-                                    console.print(f"[red]✗[/red] [dim]{tool_name} failed[/dim]")
-                    elif event.type == AgentEventType.AGENT_ERROR:
-                        console.print(f"\n[error]{event.data.get('error', 'Unknown error')}[/error]")
+                                    branch_name = workflow.state.branch_name or "your-branch"
+                                    decline_content = Text()
+                                    decline_content.append("User declined. Skipping push and PR creation.\n\n", style="yellow")
+                                    decline_content.append("To push manually:\n", style="dim")
+                                    decline_content.append(f"  git push -u origin {branch_name}", style="cyan")
+                                    
+                                    decline_panel = Panel(
+                                        decline_content,
+                                        title="[bold yellow]✗ Action Declined[/bold yellow]",
+                                        border_style="yellow",
+                                        box=box.ROUNDED,
+                                        padding=(1, 2),
+                                    )
+                                    console.print()
+                                    console.print(decline_panel)
+                                    console.print()
+                                    
+                                    # Inject decline result back to agent
+                                    await agent.session.context_manager.add_tool_result(
+                                        event.data.get("call_id", ""),
+                                        "User declined: NO. Skip push and PR creation. Show manual instructions instead."
+                                    )
+                                continue
+                            
+                            # Show phase transitions prominently with beautiful formatting
+                            if tool_name == "workflow_orchestrator" and success:
+                                if "Transitioned to:" in result or "marked complete" in result.lower():
+                                    # Extract new phase
+                                    new_phase = None
+                                    if "Transitioned to:" in result:
+                                        for line in result.split("\n"):
+                                            if "Transitioned to:" in line:
+                                                new_phase = line.split("Transitioned to:")[-1].strip()
+                                                break
+                                    
+                                    if new_phase:
+                                        current_phase_display = new_phase.replace("_", " ").title()
+                                        # Show new phase
+                                        console.print(f"\n[bold cyan]→ Next Phase: {current_phase_display}[/bold cyan]\n")
+                                        logger.info(f"Phase transition: {new_phase}")
+                                        # Reset tool call counter for new phase
+                                        tool_call_count = 0
+                                        last_tool_name = None
+                            else:
+                                # Minimal tool complete indicator - only for important tools
+                                if tool_name in ["git_branch", "git_commit", "git_push", "create_pr", "create_start_here"]:
+                                    if success:
+                                        console.print(f"[green]✓[/green] [dim]{tool_name} completed[/dim]")
+                                    else:
+                                        console.print(f"[red]✗[/red] [dim]{tool_name} failed[/dim]")
+                        elif event.type == AgentEventType.AGENT_ERROR:
+                            console.print(f"\n[error]{event.data.get('error', 'Unknown error')}[/error]")
+                finally:
+                    # Properly close the async generator to prevent "Task destroyed" warnings
+                    try:
+                        await event_stream.aclose()
+                    except Exception as e:
+                        logger.debug(f"Error closing event stream: {e}")
             
         except ValueError as e:
             console.print(f"[error]Invalid issue URL: {e}[/error]")
