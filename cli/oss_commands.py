@@ -12,6 +12,12 @@ from typing import Optional
 
 import click
 from rich.console import Console
+from rich.panel import Panel
+from rich.table import Table
+from rich.rule import Rule
+from rich.text import Text
+from rich import box
+from rich.align import Align
 
 console = Console()
 logger = logging.getLogger(__name__)
@@ -119,12 +125,25 @@ def oss_fix(ctx: click.Context, issue_url: str):
             # Start workflow (phases 1-2 execute immediately)
             state = await workflow.start(issue_url)
             
-            # Display initial workflow status
-            console.print(f"\n[bold cyan]📋 Workflow Status:[/bold cyan]")
-            console.print(f"  Phase: [yellow]{state.phase.value}[/yellow]")
-            console.print(f"  Issue: #{state.issue_number}")
+            # Display initial workflow status with beautiful formatting
+            status_table = Table.grid(padding=(0, 2))
+            status_table.add_column(style="cyan bold", justify="right")
+            status_table.add_column(style="white")
+            
+            status_table.add_row("Phase:", f"[yellow]{state.phase.value.replace('_', ' ').title()}[/yellow]")
+            status_table.add_row("Issue:", f"[bold]#{state.issue_number}[/bold]")
             if state.branch_name:
-                console.print(f"  Branch: {state.branch_name}")
+                status_table.add_row("Branch:", f"[green]{state.branch_name}[/green]")
+            
+            status_panel = Panel(
+                status_table,
+                title="[bold cyan]📋 Workflow Status[/bold cyan]",
+                border_style="cyan",
+                box=box.ROUNDED,
+                padding=(1, 2),
+            )
+            console.print()
+            console.print(status_panel)
             console.print()
             
             # Get phase prompt for Agent
@@ -167,10 +186,17 @@ Use 'workflow_orchestrator' tool with action 'get_status' to check current workf
                         # Special handling for workflow_orchestrator to show phase transitions
                         if tool_name == "workflow_orchestrator":
                             action = tool_args.get("action", "unknown") if isinstance(tool_args, dict) else "unknown"
-                            console.print(f"\n[bold cyan]🔄 Workflow Action: {tool_name} (action: {action})[/bold cyan]")
+                            action_text = Text("🔄 ", style="cyan")
+                            action_text.append("Workflow Action", style="bold cyan")
+                            action_text.append(f": {action}", style="cyan")
+                            console.print()
+                            console.print(Rule(action_text, style="cyan"))
                             logger.info(f"Workflow orchestrator called: action={action}")
                         else:
-                            console.print(f"\n[dim]🔧 Using tool: {tool_name}[/dim]")
+                            tool_text = Text("🔧 ", style="dim")
+                            tool_text.append(f"Using tool: {tool_name}", style="dim")
+                            console.print()
+                            console.print(tool_text)
                     elif event.type == AgentEventType.TOOL_CALL_COMPLETE:
                         tool_name = event.data.get("name", "unknown")
                         result = event.data.get("output", "")
@@ -191,20 +217,54 @@ Use 'workflow_orchestrator' tool with action 'get_status' to check current workf
                                 elif "Default:" in line:
                                     default_yes = "yes" in line.lower()
                             
-                            # Ask user for confirmation
-                            console.print(f"\n[bold yellow]❓ {confirm_msg}[/bold yellow]")
-                            response = click.confirm("Proceed?", default=default_yes)
+                            # Ask user for confirmation with beautiful formatting
+                            confirm_panel = Panel(
+                                Text(confirm_msg, style="yellow"),
+                                title="[bold yellow]❓ Confirmation Required[/bold yellow]",
+                                border_style="yellow",
+                                box=box.ROUNDED,
+                                padding=(1, 2),
+                            )
+                            console.print()
+                            console.print(confirm_panel)
+                            console.print()
+                            
+                            response = click.confirm("[bold]Proceed?[/bold]", default=default_yes)
                             
                             if response:
-                                console.print("[green]✓ User confirmed. Proceeding with push and PR creation...[/green]\n")
+                                success_panel = Panel(
+                                    Text("User confirmed. Proceeding with push and PR creation...", style="green"),
+                                    border_style="green",
+                                    box=box.ROUNDED,
+                                    padding=(1, 2),
+                                )
+                                console.print()
+                                console.print(success_panel)
+                                console.print()
+                                
                                 # Inject confirmation result back to agent
                                 await agent.session.context_manager.add_tool_result(
                                     event.data.get("call_id", ""),
                                     "User confirmed: YES. Proceed with push and PR creation."
                                 )
                             else:
-                                console.print("[yellow]✗ User declined. Skipping push and PR creation.[/yellow]\n")
-                                console.print("[dim]You can push changes manually using: git push -u origin <branch-name>[/dim]\n")
+                                branch_name = workflow.state.branch_name or "your-branch"
+                                decline_content = Text()
+                                decline_content.append("User declined. Skipping push and PR creation.\n\n", style="yellow")
+                                decline_content.append("To push manually:\n", style="dim")
+                                decline_content.append(f"  git push -u origin {branch_name}", style="cyan")
+                                
+                                decline_panel = Panel(
+                                    decline_content,
+                                    title="[bold yellow]✗ Action Declined[/bold yellow]",
+                                    border_style="yellow",
+                                    box=box.ROUNDED,
+                                    padding=(1, 2),
+                                )
+                                console.print()
+                                console.print(decline_panel)
+                                console.print()
+                                
                                 # Inject decline result back to agent
                                 await agent.session.context_manager.add_tool_result(
                                     event.data.get("call_id", ""),
@@ -212,23 +272,47 @@ Use 'workflow_orchestrator' tool with action 'get_status' to check current workf
                                 )
                             continue
                         
-                        # Show phase transitions prominently
+                        # Show phase transitions prominently with beautiful formatting
                         if tool_name == "workflow_orchestrator" and success:
                             if "Transitioned to:" in result or "marked complete" in result.lower():
-                                console.print(f"\n[bold green]✓ Phase transition successful[/bold green]")
-                                logger.info(f"Phase transition completed successfully via {tool_name}")
-                                # Extract and display new phase
+                                # Extract new phase
+                                new_phase = None
                                 if "Transitioned to:" in result:
                                     for line in result.split("\n"):
                                         if "Transitioned to:" in line:
                                             new_phase = line.split("Transitioned to:")[-1].strip()
-                                            console.print(f"[bold cyan]📋 Current Phase: {new_phase}[/bold cyan]\n")
-                                            logger.info(f"New workflow phase: {new_phase}")
+                                            break
+                                
+                                # Create beautiful phase transition panel
+                                transition_table = Table.grid(padding=(0, 1))
+                                transition_table.add_column(style="green bold", justify="right")
+                                transition_table.add_column(style="white")
+                                
+                                transition_table.add_row("✓", "Phase transition successful")
+                                if new_phase:
+                                    phase_display = new_phase.replace("_", " ").title()
+                                    transition_table.add_row("→", f"[bold cyan]{phase_display}[/bold cyan]")
+                                
+                                transition_panel = Panel(
+                                    transition_table,
+                                    border_style="green",
+                                    box=box.ROUNDED,
+                                    padding=(1, 2),
+                                )
+                                console.print()
+                                console.print(transition_panel)
+                                console.print()
+                                
+                                logger.info(f"Phase transition completed successfully via {tool_name}")
+                                if new_phase:
+                                    logger.info(f"New workflow phase: {new_phase}")
+                                
                                 # Show the new phase prompt if present
                                 if "=== NEW PHASE:" in result:
-                                    console.print("[bold yellow]New phase instructions received. Agent will continue...[/bold yellow]\n")
+                                    console.print("[dim]New phase instructions received. Agent will continue...[/dim]\n")
                         else:
-                            console.print("[dim]Tool complete[/dim]")
+                            # Minimal tool complete indicator
+                            pass  # Don't print anything for regular tools - keep it clean
                     elif event.type == AgentEventType.AGENT_ERROR:
                         console.print(f"\n[error]{event.data.get('error', 'Unknown error')}[/error]")
             
