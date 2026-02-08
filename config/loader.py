@@ -80,19 +80,33 @@ def load_config(cwd: Path | None) -> Config:
 
     config_dict: dict[str, Any] = {}
 
-    if not any((system_path.is_file(), _get_project_config(cwd))):
-            raise ConfigError(
-                'Configuration file is missing. Please ensure you have a config.toml file in your working directory.\n'
-                'You can create one based on the following template:\n'
-                '[model]\n'
-                'api_key=YOUR_API_KEY\n'
-                '[oss]\n'
-                'enabled=true'
-            )
+    if system_path.is_file():
         try:
             config_dict = _parse_toml(system_path)
         except ConfigError:
             logger.warning(f"Skipping invalid system config: {system_path}")
+
+    project_path = _get_project_config(cwd)
+    if not project_path and not system_path.is_file():
+        # No config file found - provide helpful error message
+        project_config_path = cwd / ".ai-agent" / CONFIG_FILE_NAME
+        system_config_path = system_path
+        
+        error_msg = (
+            f"Configuration file is missing.\n\n"
+            f"Expected locations:\n"
+            f"  - Project config: {project_config_path}\n"
+            f"  - System config: {system_config_path}\n\n"
+            f"To create a config file, create {project_config_path} with:\n\n"
+            f"[model]\n"
+            f"name = \"gpt-4o-mini\"\n"
+            f"api_key = \"YOUR_API_KEY_HERE\"\n\n"
+            f"[oss]\n"
+            f"enabled = true\n"
+            f"github_token = \"YOUR_GITHUB_TOKEN_HERE\"\n\n"
+            f"For more details, see: https://github.com/Hell1213/Oss-Dev"
+        )
+        raise ConfigError(error_msg, config_file=str(project_config_path))
 
     project_path = _get_project_config(cwd)
     if project_path:
