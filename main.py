@@ -453,8 +453,7 @@ Continue from where we left off."""
             pass
 
 
-@click.group(invoke_without_command=True)
-@click.argument("prompt", required=False)
+@click.group()
 @click.option(
     "--cwd",
     "-c",
@@ -464,17 +463,30 @@ Continue from where we left off."""
 @click.pass_context
 def main(
     ctx: click.Context,
-    prompt: str | None,
     cwd: Path | None,
 ):
     """
     AI Coding Agent - CLI interface for AI-powered coding assistance.
     
     Use 'oss-dev' subcommands for OSS contribution workflows.
+    Example: python main.py oss-dev fix <issue_url>
     """
-    # If a subcommand was invoked, don't run the default behavior
-    if ctx.invoked_subcommand is not None:
-        return
+    ctx.ensure_object(dict)
+    ctx.obj["cwd"] = cwd
+
+
+@main.command()
+@click.argument("prompt", required=True)
+@click.option(
+    "--cwd",
+    "-c",
+    type=click.Path(exists=True, file_okay=False, path_type=Path),
+    help="Current working directory",
+)
+@click.pass_context
+def chat(ctx: click.Context, prompt: str, cwd: Path | None):
+    """Run a single prompt through the agent."""
+    cwd = cwd or ctx.obj.get("cwd") or Path.cwd()
     
     try:
         config = load_config(cwd=cwd)
@@ -483,26 +495,48 @@ def main(
         sys.exit(1)
 
     errors = config.validate()
-
     if errors:
         for error in errors:
             console.print(f"[error]{error}[/error]")
         sys.exit(1)
 
     cli = CLI(config)
+    result = asyncio.run(cli.run_single(prompt))
+    if result is None:
+        sys.exit(1)
 
-    # messages = [{"role": "user", "content": prompt}]
-    if prompt:
-        result = asyncio.run(cli.run_single(prompt))
-        if result is None:
-            sys.exit(1)
-    else:
-        asyncio.run(cli.run_interactive())
+
+@main.command()
+@click.option(
+    "--cwd",
+    "-c",
+    type=click.Path(exists=True, file_okay=False, path_type=Path),
+    help="Current working directory",
+)
+@click.pass_context
+def interactive(ctx: click.Context, cwd: Path | None):
+    """Start interactive agent session."""
+    cwd = cwd or ctx.obj.get("cwd") or Path.cwd()
+    
+    try:
+        config = load_config(cwd=cwd)
+    except Exception as e:
+        console.print(f"[error]Configuration Error: {e}[/error]")
+        sys.exit(1)
+
+    errors = config.validate()
+    if errors:
+        for error in errors:
+            console.print(f"[error]{error}[/error]")
+        sys.exit(1)
+
+    cli = CLI(config)
+    asyncio.run(cli.run_interactive())
 
 
 # Add OSS command group
 # INTENTIONAL ERROR: Missing import - this will be fixed by agent in issue #3
-# from cli.oss_commands import oss_dev_group
+from cli.oss_commands import oss_dev_group
 main.add_command(oss_dev_group)
 
 if __name__ == "__main__":
