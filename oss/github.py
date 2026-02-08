@@ -350,7 +350,7 @@ class GitHubClient:
     ) -> list[dict[str, Any]]:
         """List issues using GitHub API directly."""
         # Placeholder for future API calls to GitHub.
-            raise NotImplementedError(
+        raise NotImplementedError(
             "Direct GitHub API calls not yet implemented. "
             "Please install GitHub CLI: sudo apt install gh && gh auth login"
         )
@@ -407,7 +407,7 @@ class GitHubClient:
     ) -> list[dict[str, Any]]:
         """Get PR comments using GitHub API directly."""
         # Placeholder for future API calls to GitHub.
-            raise NotImplementedError(
+        raise NotImplementedError(
             "Direct GitHub API calls not yet implemented. "
             "Please install GitHub CLI: sudo apt install gh && gh auth login"
         )
