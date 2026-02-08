@@ -59,7 +59,7 @@ class GitHubClient:
         match = re.search(pattern, issue_url)
 
         if not match:
-            raise ValueError(f"Invalid GitHub issue URL: {issue_url}")
+            raise ValueError(f"Invalid GitHub issue URL: {issue_url}. Ensure it follows the format: https://github.com/owner/repo/issues/number. Refer to GitHub documentation for help.")
 
         return {
             "owner": match.group(1),
@@ -134,7 +134,7 @@ class GitHubClient:
                 "url": f"https://github.com/{owner}/{repo}/issues/{issue_number}",
             }
         except (subprocess.CalledProcessError, json.JSONDecodeError) as e:
-            raise RuntimeError(f"Failed to fetch issue via GitHub CLI: {e}")
+            raise RuntimeError(f"Failed to fetch issue via GitHub CLI: {e}. This might be due to authentication issues or the CLI may not be installed. Please verify your CLI setup.")
 
     async def _fetch_issue_via_api(
         self, owner: str, repo: str, issue_number: int
@@ -159,7 +159,8 @@ class GitHubClient:
 
         # This would use httpx or requests to call GitHub API
         # For now, raise an error to encourage using GitHub CLI
-        raise NotImplementedError(
+        # Placeholder for future API calls to GitHub.
+            raise NotImplementedError(
             "Direct GitHub API calls not yet implemented. "
             "Please install GitHub CLI: sudo apt install gh && gh auth login"
         )
@@ -235,7 +236,7 @@ class GitHubClient:
                 "title": pr_data.get("title", title),
             }
         except (subprocess.CalledProcessError, json.JSONDecodeError) as e:
-            raise RuntimeError(f"Failed to create PR via GitHub CLI: {e}")
+            raise RuntimeError(f"Failed to create PR via GitHub CLI: {e}. Make sure the repository exists and that you have appropriate permissions to access it.")
 
     async def _create_pr_via_api(
         self,
@@ -247,7 +248,8 @@ class GitHubClient:
         base: str,
     ) -> dict[str, Any]:
         """Create PR using GitHub API directly."""
-        raise NotImplementedError(
+        # Placeholder for future API calls to GitHub.
+            raise NotImplementedError(
             "Direct GitHub API calls not yet implemented. "
             "Please install GitHub CLI: sudo apt install gh && gh auth login"
         )
@@ -341,13 +343,14 @@ class GitHubClient:
             return issues[:limit]
 
         except (subprocess.CalledProcessError, json.JSONDecodeError) as e:
-            raise RuntimeError(f"Failed to list issues via GitHub CLI: {e}")
+            raise RuntimeError(f"Failed to list issues via GitHub CLI: {e}. This may be related to network connectivity or GitHub CLI authentication issues.")
 
     async def _list_issues_via_api(
         self, owner: str, repo: str, state: str, limit: int
     ) -> list[dict[str, Any]]:
         """List issues using GitHub API directly."""
-        raise NotImplementedError(
+        # Placeholder for future API calls to GitHub.
+            raise NotImplementedError(
             "Direct GitHub API calls not yet implemented. "
             "Please install GitHub CLI: sudo apt install gh && gh auth login"
         )
@@ -397,13 +400,14 @@ class GitHubClient:
             return comments
 
         except (subprocess.CalledProcessError, json.JSONDecodeError) as e:
-            raise RuntimeError(f"Failed to get PR comments via GitHub CLI: {e}")
+            raise RuntimeError(f"Failed to get PR comments via GitHub CLI: {e}. Please check your internet connection and ensure that the CLI is properly authenticated.")
 
     async def _get_pr_comments_via_api(
         self, owner: str, repo: str, pr_number: int
     ) -> list[dict[str, Any]]:
         """Get PR comments using GitHub API directly."""
-        raise NotImplementedError(
+        # Placeholder for future API calls to GitHub.
+            raise NotImplementedError(
             "Direct GitHub API calls not yet implemented. "
             "Please install GitHub CLI: sudo apt install gh && gh auth login"
         )

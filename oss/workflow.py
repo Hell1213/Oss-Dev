@@ -108,6 +108,25 @@ class OSSWorkflow:
         # Parse issue URL
         issue_data = self.github_client.parse_issue_url(issue_url)
         self.state.issue_number = issue_data.get("issue_number")
+        
+        # Check if branch already exists for this issue
+        if self.state.issue_number:
+            expected_branch = self.config.oss.branch_naming_pattern.format(number=self.state.issue_number)
+            # Check if branch exists
+            try:
+                import subprocess
+                result = subprocess.run(
+                    ["git", "rev-parse", "--verify", f"refs/heads/{expected_branch}"],
+                    cwd=self.repository_path,
+                    capture_output=True,
+                    check=False,
+                )
+                if result.returncode == 0:
+                    # Branch exists - reuse it
+                    self.state.branch_name = expected_branch
+                    logger.info(f"Reusing existing branch: {expected_branch}")
+            except Exception as e:
+                logger.debug(f"Could not check branch existence: {e}")
 
         # Execute phases 1-2 immediately (these use tools directly)
         await self._phase_repository_understanding()
@@ -764,24 +783,28 @@ Create commit and open pull request for issue #{issue_number}.
 
 3. **Verify commit**: Check that commit was created successfully
 
-### Step 3: User Confirmation (REQUIRED)
+### Step 3: User Confirmation (MANDATORY - DO NOT SKIP)
 
-**BEFORE pushing or creating PR, you MUST ask for user confirmation:**
+**⚠️ CRITICAL: You MUST ask for user confirmation BEFORE pushing or creating PR.**
 
-1. **Use `user_confirm` tool** to ask user:
+**This is a REQUIRED step. You cannot proceed to push/PR without user confirmation.**
+
+1. **Call `user_confirm` tool NOW** (before any push or PR operations):
    ```
    user_confirm(message='Ready to push changes and create PR. Proceed?', default=True)
    ```
 
-2. **Wait for user response**:
-   - If user confirms (yes): Proceed with push and PR creation
-   - If user declines (no): Skip push/PR and show manual instructions
+2. **DO NOT proceed until you get the user's response:**
+   - If response is "User confirmed: YES" → Continue to Step 4 (Push) and Step 5 (Create PR)
+   - If response is "User declined: NO" → Skip to Step 6 (Manual Instructions)
 
-3. **Handle response**:
-   - **YES**: Continue to Step 4 (Push) and Step 5 (Create PR)
-   - **NO**: Skip to Step 6 (Manual Instructions)
+3. **IMPORTANT**: 
+   - You MUST call `user_confirm` tool
+   - You MUST wait for the response
+   - You MUST check the response before proceeding
+   - DO NOT call `git_push` or `create_pr` until user confirms
 
-### Step 4: Push Branch (Only if user confirmed)
+### Step 4: Push Branch (Only if user confirmed YES)
 
 **Only proceed if user confirmed YES:**
 
@@ -794,7 +817,7 @@ Create commit and open pull request for issue #{issue_number}.
 
 ## Pull Request Steps
 
-### Step 5: Create PR (Only if user confirmed)
+### Step 5: Create PR (Only if user confirmed YES)
 
 **Only proceed if user confirmed YES:**
 
