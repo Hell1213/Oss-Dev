@@ -1,4 +1,4 @@
-# AI Agent
+# AI-CODING-AGENT
 
 An AI agent that can execute tasks using tools and manage conversations.
 
