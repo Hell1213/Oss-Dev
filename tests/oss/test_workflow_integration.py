@@ -13,6 +13,7 @@ from config.config import Config, OSSConfig
 async def test_workflow_start(test_config, temp_dir):
     """Test workflow start."""
     workflow = OSSWorkflow(test_config, repository_path=temp_dir)
+    workflow.state.phase = WorkflowPhase.PLANNING
     
     # Mock issue URL
     issue_url = "https://github.com/test-owner/test-repo/issues/123"
@@ -29,6 +30,7 @@ async def test_workflow_start(test_config, temp_dir):
 async def test_workflow_phase_prompts(test_config, temp_dir):
     """Test workflow phase prompts."""
     workflow = OSSWorkflow(test_config, repository_path=temp_dir)
+    workflow.state.phase = WorkflowPhase.PLANNING
     
     # Test each phase prompt
     workflow.state.phase = WorkflowPhase.REPOSITORY_UNDERSTANDING
@@ -44,6 +46,7 @@ async def test_workflow_phase_prompts(test_config, temp_dir):
 async def test_workflow_phase_transition(test_config, temp_dir):
     """Test workflow phase transitions."""
     workflow = OSSWorkflow(test_config, repository_path=temp_dir)
+    workflow.state.phase = WorkflowPhase.PLANNING
     
     # Start at planning
     workflow.state.phase = WorkflowPhase.PLANNING
