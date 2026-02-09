@@ -535,7 +535,8 @@ def interactive(ctx: click.Context, cwd: Path | None):
 
 
 # Add OSS command group
-# INTENTIONAL ERROR: Missing import - this will be fixed by agent in issue #3
+# Fixed missing import for OSS commands
+from cli.oss_commands import oss_dev_group
 from cli.oss_commands import oss_dev_group
 main.add_command(oss_dev_group)
 
