@@ -177,17 +177,17 @@ class LLMClient:
                                 ),
                             )
 
-        # Emit complete events for all tool calls (only if name is set)
+        # Emit complete events for ALL tool calls, even if name is not set yet
+        # This ensures we collect every tool_call_id the API returns
         for idx, tc in sorted(tool_calls.items()):
-            if tc["name"]:  # Only emit if we have a name
-                yield StreamEvent(
-                    type=StreamEventType.TOOL_CALL_COMPLETE,
-                    tool_call=ToolCall(
-                        call_id=tc["id"],
-                        name=tc["name"],
-                        arguments=tc["arguments"],  # Keep as string, will be parsed later
-                    ),
-                )
+            yield StreamEvent(
+                type=StreamEventType.TOOL_CALL_COMPLETE,
+                tool_call=ToolCall(
+                    call_id=tc["id"],
+                    name=tc.get("name") or "",  # Can be empty, will be handled in agent
+                    arguments=tc.get("arguments", ""),  # Keep as string, will be parsed later
+                ),
+            )
 
         yield StreamEvent(
             type=StreamEventType.MESSAGE_COMPLETE,
