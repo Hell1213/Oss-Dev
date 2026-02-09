@@ -2,7 +2,5 @@
 
 An AI agent that can execute tasks using tools and manage conversations.
 
-...
 
-
-hello Faaa test is functioning properly
+hello Faaa test is working
