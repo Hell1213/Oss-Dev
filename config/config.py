@@ -7,16 +7,23 @@ from pydantic import BaseModel, Field, model_validator
 
 
 class ModelConfig(BaseModel):
-    name: str = "mistralai/devstral-2512:free"
+    # Default to Gemini 2.0 Flash Experimental for hackathon
+    # This is the primary and intended model for OSS Dev Agent
+    name: str = "gemini-2.0-flash-exp"
     temperature: float = Field(default=1, ge=0.0, le=2.0)
-    context_window: int = 256_000
+    context_window: int = 1_000_000  # Gemini 2.0 supports up to 1M tokens
     api_key: str | None = Field(
         default=None,
-        description="API key for LLM service (can also be set via API_KEY env var)",
+        description="Gemini API key (can also be set via GEMINI_API_KEY or API_KEY env var)",
     )
     base_url: str | None = Field(
         default=None,
-        description="Base URL for LLM API (can also be set via BASE_URL env var)",
+        description="Base URL for LLM API. For Gemini (primary), set to OpenAI-compatible endpoint. Leave None for default (fallback/dev only).",
+    )
+    # Provider selection: 'gemini' (default) or 'openai' (fallback/dev only)
+    provider: str = Field(
+        default="gemini",
+        description="LLM provider: 'gemini' (primary) or 'openai' (fallback/dev only)",
     )
 
 
@@ -154,7 +161,10 @@ class Config(BaseModel):
         # Try config file first
         if self.model.api_key:
             return self.model.api_key
-        # Fall back to environment variable
+        # For Gemini (default), check GEMINI_API_KEY first, then API_KEY
+        if self.model.provider == "gemini":
+            return os.environ.get("GEMINI_API_KEY") or os.environ.get("API_KEY")
+        # For OpenAI fallback, use API_KEY
         return os.environ.get("API_KEY")
 
     @property
@@ -193,9 +203,14 @@ class Config(BaseModel):
         errors: list[str] = []
 
         if not self.api_key:
-            errors.append(
-                "No API key found. Set API_KEY environment variable or add 'api_key' to [model] section in .ai-agent/config.toml"
-            )
+            if self.model.provider == "gemini":
+                errors.append(
+                    "No Gemini API key found. Set GEMINI_API_KEY (or API_KEY) environment variable or add 'api_key' to [model] section in .ai-agent/config.toml"
+                )
+            else:
+                errors.append(
+                    "No API key found. Set API_KEY environment variable or add 'api_key' to [model] section in .ai-agent/config.toml"
+                )
 
         if not self.cwd.exists():
             errors.append(f"Working directory does not exist: {self.cwd}")
