@@ -235,8 +235,45 @@ class GitHubClient:
                 "number": pr_data.get("number", 0),
                 "title": pr_data.get("title", title),
             }
-        except (subprocess.CalledProcessError, json.JSONDecodeError) as e:
+        except subprocess.CalledProcessError as e:
+            error_output = e.stderr or e.stdout or ""
+            # Check if PR already exists
+            if "already exists" in error_output.lower() or "pull request already exists" in error_output.lower():
+                # Try to get existing PR
+                try:
+                    result = subprocess.run(
+                        [
+                            "gh",
+                            "pr",
+                            "list",
+                            "--repo",
+                            f"{owner}/{repo}",
+                            "--head",
+                            head,
+                            "--base",
+                            base,
+                            "--json",
+                            "url,number,title",
+                            "--limit",
+                            "1",
+                        ],
+                        capture_output=True,
+                        text=True,
+                        check=True,
+                    )
+                    pr_list = json.loads(result.stdout)
+                    if pr_list:
+                        existing_pr = pr_list[0]
+                        return {
+                            "url": existing_pr.get("url", ""),
+                            "number": existing_pr.get("number", 0),
+                            "title": existing_pr.get("title", title),
+                        }
+                except Exception:
+                    pass
             raise RuntimeError(f"Failed to create PR via GitHub CLI: {e}. Make sure the repository exists and that you have appropriate permissions to access it.")
+        except json.JSONDecodeError as e:
+            raise RuntimeError(f"Failed to parse PR creation response: {e}")
 
     async def _create_pr_via_api(
         self,

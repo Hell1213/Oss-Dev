@@ -106,6 +106,16 @@ def get_issue_intake_prompt(context: dict[str, any]) -> str:
 
 Fetch and understand the GitHub issue: {issue_url}
 
+
+
+**You MUST NOT:**
+- ❌ Make any code changes
+- ❌ Create any commits
+- ❌ Push any changes
+- ❌ Create any branches (that happens in Implementation phase)
+
+**This phase is ONLY for understanding the issue.**
+
 Steps:
 1. Use 'fetch_issue' tool to get issue details
 2. Analyze the issue:
@@ -116,7 +126,9 @@ Steps:
 
 3. Store your understanding - this will guide the fix
 
-If the issue is unclear or missing critical information, ask ONE precise clarification question before proceeding."""
+If the issue is unclear or missing critical information, ask ONE precise clarification question before proceeding.
+
+**Remember: This is an analysis phase only. No code, no commits, no branches yet.**"""
 
 
 def get_planning_prompt(context: dict[str, any]) -> str:
@@ -149,8 +161,15 @@ Planning Steps:
 CRITICAL RULES:
 - Do NOT write any code yet
 - Do NOT make any file changes
+- Do NOT create any commits
+- Do NOT push any changes
+- Do NOT create any branches
+- Do NOT create any pull requests
+- Do NOT call git_commit, git_push, create_pr, or git_branch tools
 - Only plan and analyze
 - If scope is unclear, ask ONE precise clarification question
+
+**This phase is ONLY for planning. No code, no commits, no PRs, no branches.**
 
 Output your plan clearly before proceeding to implementation.
 

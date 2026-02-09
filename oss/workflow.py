@@ -987,6 +987,35 @@ After PR is successfully created:
         current_idx = phase_order.index(self.state.phase)
         previous_phase = self.state.phase.value
         
+        
+        # This prevents agent from committing to main at any phase
+        import subprocess
+        try:
+            result = subprocess.run(
+                ["git", "branch", "--show-current"],
+                cwd=self.repository_path,
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            current_branch = result.stdout.strip()
+            if current_branch in ["main", "master"]:
+                # Check if there are any commits or staged changes
+                status_result = subprocess.run(
+                    ["git", "status", "--porcelain"],
+                    cwd=self.repository_path,
+                    capture_output=True,
+                    text=True,
+                    check=True,
+                )
+                has_changes = bool(status_result.stdout.strip())
+                if has_changes:
+                    error_msg = f"❌ CRITICAL: You are on {current_branch} branch with uncommitted changes. You MUST create a feature branch first. Use 'git_branch' tool with action='create' and branch_name='fix/issue-{self.state.issue_number or 'unknown'}' before making any changes."
+                    logger.error(error_msg)
+                    raise ValueError(error_msg)
+        except Exception as e:
+            logger.warning(f"Could not verify branch during phase transition: {e}")
+        
         # VALIDATION: For implementation phase, verify work was actually done
         if previous_phase == WorkflowPhase.IMPLEMENTATION.value:
             is_valid, validation_message = await self._validate_implementation_complete()
