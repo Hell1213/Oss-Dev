@@ -29,6 +29,9 @@ This directory contains tools specific to OSS development workflows.
 
 ## Implementation Status
 
+hello Faaa test is working
+
+
 **Phase 0.2**: Directory structure created
 **Phase 1**: Git tools will be implemented
 **Phase 2**: GitHub API tools will be implemented
