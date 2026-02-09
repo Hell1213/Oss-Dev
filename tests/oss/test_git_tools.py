@@ -103,8 +103,7 @@ async def test_git_commit_tool(test_config, mock_git_repo):
     test_file = mock_git_repo / "test.txt"
     test_file.write_text("test content")
     subprocess.run([
-        "git", "add", "test.txt",
-        "--quiet"
+        "git", "add", "test.txt"
     ], cwd=mock_git_repo, capture_output=True, check=True)
     params = GitCommitParams(message="test: add test file", path=str(mock_git_repo))
     invocation = type('obj', (object,), {
