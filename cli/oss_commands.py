@@ -1,3 +1,11 @@
+import click
+
+@click.group()    
+def oss_dev_group():
+    """OSS Dev Command Group."""
+    pass
+
+
 def validate_oss_enabled(config) -> bool:
     if not config.oss.enabled:
         console.print(
