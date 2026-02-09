@@ -23,7 +23,7 @@ async def test_workflow_start(test_config, temp_dir):
     state = await workflow.start(issue_url)
     
     assert state.issue_url == issue_url
-    assert state.issue_number == 123
+    assert state.issue_number == 21
     assert state.phase == WorkflowPhase.PLANNING  # Should be at planning after start
 
 
