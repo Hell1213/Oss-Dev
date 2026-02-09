@@ -31,3 +31,12 @@ async def test_workflow_state_management(test_config, temp_dir):
     workflow.state.phase = WorkflowPhase.ISSUE_INTAKE
     updated_state = workflow.get_state()
     assert updated_state.phase == WorkflowPhase.ISSUE_INTAKE
+
+
+@pytest.mark.asyncio
+async def test_workflow_confirmation(test_config, temp_dir):
+    """Test workflow confirmation logic."""
+    workflow = OSSWorkflow(test_config, repository_path=temp_dir)
+    
+    # Testing confirmation functionality for OSSWorkflow
+    assert workflow.confirmation_required() is True  # Assuming it should require confirmation
