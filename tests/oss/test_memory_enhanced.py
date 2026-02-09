@@ -120,7 +120,7 @@ async def test_memory_cleanup(temp_dir):
     manager.save_branch(recent_memory)
     
     # Cleanup (30 days default)
-    cleaned = manager.cleanup_old_memories(days=30)
+    cleaned = manager.cleanup_old_memories(days_old=30)
     
     # Old memory should be cleaned if branch doesn't exist
     # Recent memory should remain
