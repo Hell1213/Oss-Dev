@@ -1,5 +1,7 @@
 # Core Dependencies
 click>=8.0.0
+# OpenAI client library: Used for Gemini (via OpenAI-compatible API) and OpenAI fallback
+# OSS Dev Agent is built for Gemini 3 hackathon - Gemini is the primary model
 openai>=1.0.0
 pydantic>=2.0.0
 rich>=13.0.0

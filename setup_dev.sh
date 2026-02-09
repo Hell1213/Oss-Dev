@@ -76,6 +76,17 @@ python3 -c "import click, openai, pydantic, rich, tiktoken; print('   ✅ Core d
     exit 1
 }
 
+# Check for Gemini API key
+echo ""
+echo "🔍 Checking API configuration..."
+if [ -z "$GEMINI_API_KEY" ] && [ -z "$API_KEY" ]; then
+    echo "   ⚠️  GEMINI_API_KEY not set. OSS Dev Agent requires Gemini API key."
+    echo "      Get your key from: https://aistudio.google.com/apikey"
+    echo "      Then run: export GEMINI_API_KEY=your_key"
+else
+    echo "   ✅ API key configured (GEMINI_API_KEY or API_KEY)"
+fi
+
 echo ""
 echo "✅ Setup complete!"
 echo ""
