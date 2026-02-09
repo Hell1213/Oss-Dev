@@ -10,7 +10,7 @@ def get_tokenizer(model: str):
         return encoding.encode
 
 
-def count_tokens(text: str, model: str = "gpt-4") -> int:
+def count_tokens(text: str, model: str = "gemini-2.0-flash-exp") -> int:
     tokenizer = get_tokenizer(model)
 
     if tokenizer:

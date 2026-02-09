@@ -162,6 +162,11 @@ class Tool(abc.ABC):
         )
 
     def to_openai_schema(self) -> dict[str, Any]:
+        """Convert tool to OpenAI-compatible schema format.
+        
+        Note: This format is used for Gemini (via OpenAI-compatible API) and
+        OpenAI fallback. OSS Dev Agent primarily uses Gemini.
+        """
         schema = self.schema
 
         if isinstance(schema, type) and issubclass(schema, BaseModel):

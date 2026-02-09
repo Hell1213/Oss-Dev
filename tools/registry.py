@@ -64,6 +64,8 @@ class ToolRegistry:
         return tools
 
     def get_schemas(self) -> list[dict[str, Any]]:
+        # Convert tools to OpenAI-compatible schema format
+        # Used for Gemini (primary, via OpenAI-compatible API) and OpenAI (fallback)
         return [tool.to_openai_schema() for tool in self.get_tools()]
 
     async def invoke(
