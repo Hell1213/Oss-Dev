@@ -545,6 +545,10 @@ Based on your plan, make the necessary changes:
    - ❌ Do NOT reformat unrelated files
    - ❌ Do NOT do drive-by refactors
    - ❌ No patch-work fixes
+   - ❌ Do NOT modify files that are not mentioned in the issue or your plan
+   - ❌ Do NOT change formatting, whitespace, or style in files unrelated to the fix
+   - ❌ Do NOT add new features or functionality not requested in the issue
+   - ⚠️ **CRITICAL**: Before making ANY file change, ask yourself: "Is this file change necessary to fix the issue?" If NO, do NOT change it.
 
 ## STEP 3: Verify Changes (BEFORE marking complete)
 
