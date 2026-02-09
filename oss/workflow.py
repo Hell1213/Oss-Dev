@@ -987,34 +987,44 @@ After PR is successfully created:
         current_idx = phase_order.index(self.state.phase)
         previous_phase = self.state.phase.value
         
-        
-        # This prevents agent from committing to main at any phase
-        import subprocess
-        try:
-            result = subprocess.run(
-                ["git", "branch", "--show-current"],
-                cwd=self.repository_path,
-                capture_output=True,
-                text=True,
-                check=True,
-            )
-            current_branch = result.stdout.strip()
-            if current_branch in ["main", "master"]:
-                # Check if there are any commits or staged changes
-                status_result = subprocess.run(
-                    ["git", "status", "--porcelain"],
+        # CRITICAL: Only check branch when transitioning TO implementation phase
+        # This is when code changes will happen, so we need to ensure we're on a feature branch
+        # Don't check on every phase transition - only when it matters
+        # Check if we're transitioning FROM planning TO implementation
+        if previous_phase == WorkflowPhase.PLANNING.value:
+            import subprocess
+            try:
+                result = subprocess.run(
+                    ["git", "branch", "--show-current"],
                     cwd=self.repository_path,
                     capture_output=True,
                     text=True,
                     check=True,
                 )
-                has_changes = bool(status_result.stdout.strip())
-                if has_changes:
-                    error_msg = f"❌ CRITICAL: You are on {current_branch} branch with uncommitted changes. You MUST create a feature branch first. Use 'git_branch' tool with action='create' and branch_name='fix/issue-{self.state.issue_number or 'unknown'}' before making any changes."
-                    logger.error(error_msg)
-                    raise ValueError(error_msg)
-        except Exception as e:
-            logger.warning(f"Could not verify branch during phase transition: {e}")
+                current_branch = result.stdout.strip()
+                if current_branch in ["main", "master"]:
+                    # Check if there are any uncommitted changes
+                    status_result = subprocess.run(
+                        ["git", "status", "--porcelain"],
+                        cwd=self.repository_path,
+                        capture_output=True,
+                        text=True,
+                        check=True,
+                    )
+                    has_changes = bool(status_result.stdout.strip())
+                    if has_changes:
+                        # Only raise error if we're about to enter implementation phase with changes on main
+                        # This warning should only appear once when transitioning to implementation
+                        error_msg = f"❌ CRITICAL: You are on {current_branch} branch with uncommitted changes. You MUST create a feature branch before implementation phase. Use 'git_branch' tool with action='create' and branch_name='fix/issue-{self.state.issue_number or 'unknown'}' before making any changes."
+                        # Log as warning, not error, to reduce verbosity
+                        logger.warning(error_msg)
+                        raise ValueError(error_msg)
+            except ValueError:
+                # Re-raise ValueError (our intentional error)
+                raise
+            except Exception as e:
+                # Only log other exceptions as warnings, don't block workflow
+                logger.debug(f"Could not verify branch during phase transition: {e}")
         
         # VALIDATION: For implementation phase, verify work was actually done
         if previous_phase == WorkflowPhase.IMPLEMENTATION.value:

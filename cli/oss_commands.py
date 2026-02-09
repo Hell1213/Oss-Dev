@@ -192,6 +192,7 @@ Use 'workflow_orchestrator' tool with action 'get_status' to check current workf
             last_tool_name = None
             tool_call_count = 0
             status = None
+            branch_warning_shown = False  # Track if branch warning was already shown
             
             # Run Agent with workflow guidance
             async with Agent(config) as agent:
@@ -367,11 +368,16 @@ The workflow has {7 - ['repository_understanding', 'issue_intake', 'planning', '
                                             logger.error(f"❌ Could not inject continue message: {e}")
                                             console.print(f"[error]Warning: Could not inject continue message. Agent may stop.[/error]")
                             else:
-                                # Minimal tool complete indicator - only for important tools
-                                if tool_name in ["git_branch", "git_commit", "git_push", "create_pr", "create_start_here"]:
+                                # Show completion only for important operations
+                                # Avoid duplicate messages by checking if we already showed this tool
+                                important_tools = ["git_branch", "git_commit", "git_push", "create_pr", "create_start_here"]
+                                if tool_name in important_tools:
                                     if success:
-                                        console.print(f"[green]✓[/green] [dim]{tool_name} completed[/dim]")
+                                        # Only show once per unique tool call to avoid spam
+                                        if tool_name != last_tool_name:
+                                            console.print(f"[green]✓[/green] [dim]{tool_name}[/dim]")
                                     else:
+                                        # Always show failures
                                         console.print(f"[red]✗[/red] [dim]{tool_name} failed[/dim]")
                         elif event.type == AgentEventType.AGENT_ERROR:
                             console.print(f"\n[error]{event.data.get('error', 'Unknown error')}[/error]")
