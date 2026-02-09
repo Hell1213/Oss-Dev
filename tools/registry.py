@@ -73,6 +73,7 @@ class ToolRegistry:
         cwd: Path,
         hook_system: HookSystem,
         approval_manager: ApprovalManager | None = None,
+        session: Any = None,  # Session object for tools that need it
     ) -> ToolResult:
         tool = self.get(name)
         if tool is None:
@@ -102,6 +103,9 @@ class ToolRegistry:
             params=params,
             cwd=cwd,
         )
+        # Attach session to invocation for tools that need it (e.g., git_push, create_pr)
+        if session:
+            invocation.session = session
         if approval_manager:
             confirmation = await tool.get_confirmation(invocation)
             if confirmation:

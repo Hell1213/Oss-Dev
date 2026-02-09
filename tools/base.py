@@ -92,6 +92,7 @@ class ToolResult:
 class ToolInvocation:
     params: dict[str, Any]
     cwd: Path
+    session: Any = None  # Session object (optional, for tools that need it)
 
 
 @dataclass

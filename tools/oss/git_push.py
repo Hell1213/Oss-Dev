@@ -59,6 +59,20 @@ class GitPushTool(Tool):
         params = GitPushParams(**invocation.params)
         repo_path = Path(params.path) if params.path else invocation.cwd
 
+        # CRITICAL: Check if user has confirmed push/PR operations
+        # The agent MUST call user_confirm tool first and wait for confirmation
+        if hasattr(invocation, 'session') and invocation.session:
+            if not invocation.session.user_confirmed_push_pr:
+                return ToolResult.error_result(
+                    "❌ User confirmation required before pushing.\n\n"
+                    "You MUST call 'user_confirm' tool first and wait for user to confirm 'YES' before calling git_push.\n\n"
+                    "Correct sequence:\n"
+                    "1. Call: user_confirm(message='Ready to push changes and create PR. Proceed?', default=True)\n"
+                    "2. Wait for user response\n"
+                    "3. Only if response is 'User confirmed: YES', then call git_push\n"
+                    "4. DO NOT call git_push before user confirmation"
+                )
+
         try:
             import git
 

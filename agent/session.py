@@ -38,6 +38,8 @@ class Session:
         self.updated_at = datetime.now()
 
         self.turn_count = 0
+        # Track user confirmation state for push/PR operations
+        self.user_confirmed_push_pr: bool = False
 
     async def initialize(self) -> None:
         await self.mcp_manager.initialize()
