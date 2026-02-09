@@ -11,12 +11,13 @@ from config.config import Config, OSSConfig
 
 @pytest.mark.asyncio
 async def test_workflow_start(test_config, temp_dir):
+    valid_issue_url = 'https://github.com/Hell1213/Oss-Dev/issues/21'
     """Test workflow start."""
     workflow = OSSWorkflow(test_config, repository_path=temp_dir)
     workflow.state.phase = WorkflowPhase.PLANNING
     
     # Mock issue URL
-    issue_url = "https://github.com/test-owner/test-repo/issues/123"
+    issue_url = valid_issue_url
     
     # Start workflow (will execute phases 1-2)
     state = await workflow.start(issue_url)
