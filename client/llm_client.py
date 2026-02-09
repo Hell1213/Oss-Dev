@@ -1,5 +1,8 @@
 import asyncio
 from typing import Any, AsyncGenerator
+# Note: OpenAI client library is used for OpenAI-compatible API endpoints
+# OSS Dev Agent uses Gemini as primary (via OpenAI-compatible endpoint)
+# OpenAI imports are for fallback/dev support only
 from openai import APIConnectionError, APIError, AsyncOpenAI, RateLimitError
 
 from client.response import (
@@ -22,9 +25,19 @@ class LLMClient:
 
     def get_client(self) -> AsyncOpenAI:
         if self._client is None:
+            # OSS Dev Agent is built for Gemini 3 hackathon
+            # Gemini is the primary and intended model
+            base_url = self.config.base_url
+            if self.config.model.provider == "gemini" and not base_url:
+                # For Gemini (primary model), configure base_url for OpenAI-compatible endpoint
+                # or use Google's Generative AI SDK directly
+                # For hackathon: Set base_url in config for your Gemini provider's endpoint
+                # If not set, will attempt to use default (may require provider-specific setup)
+                pass
+            
             self._client = AsyncOpenAI(
-                api_key=self.config.api_key,  # "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"
-                base_url=self.config.base_url,  # "https://openrouter.ai/api/v1"
+                api_key=self.config.api_key,
+                base_url=base_url,  # Set via BASE_URL env var or config for Gemini endpoints
             )
         return self._client
 

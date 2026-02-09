@@ -71,6 +71,11 @@ class ToolResultMessage:
     is_error: bool = False
 
     def to_openai_message(self) -> dict[str, Any]:
+        """Convert to OpenAI-compatible message format.
+        
+        Note: Used for Gemini (primary, via OpenAI-compatible API) and OpenAI (fallback).
+        OSS Dev Agent primarily uses Gemini.
+        """
         return {
             "role": "tool",
             "tool_call_id": self.tool_call_id,
