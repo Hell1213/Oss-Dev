@@ -83,7 +83,16 @@ class ContextManager:
 
         self._messages.append(item)
 
-    def add_tool_result(self, tool_call_id: str, content: str) -> None:
+    def add_tool_result(self, tool_call_id: str, content: str, insert_after_assistant_index: int | None = None) -> None:
+        """
+        Add a tool result to the message history.
+        
+        Args:
+            tool_call_id: The ID of the tool call this result corresponds to
+            content: The tool result content
+            insert_after_assistant_index: If provided, insert immediately after this assistant message index.
+                                          This ensures tool results immediately follow assistant messages with tool_calls.
+        """
         # Ensure content is never None or empty - API requires a string
         if content is None:
             content = ""
@@ -97,9 +106,73 @@ class ContextManager:
             token_count=count_tokens(content, self._model_name),
         )
 
-        self._messages.append(item)
+        if insert_after_assistant_index is not None:
+            # Insert immediately after the assistant message (after any existing tool results for that message)
+            insert_pos = insert_after_assistant_index + 1
+            # Skip any existing tool results
+            while (insert_pos < len(self._messages) and 
+                   self._messages[insert_pos].role == "tool"):
+                insert_pos += 1
+            self._messages.insert(insert_pos, item)
+        else:
+            # Default: append to end (for backward compatibility)
+            self._messages.append(item)
+
+    def _validate_message_history(self) -> None:
+        """
+        Validate that every assistant message with tool_calls has corresponding tool results
+        IMMEDIATELY following it. The API requires this strict ordering.
+        Tool results MUST come right after assistant message, before any user messages.
+        """
+        i = 0
+        while i < len(self._messages):
+            item = self._messages[i]
+            if item.role == "assistant" and item.tool_calls:
+                # Collect all tool_call_ids from this assistant message
+                tool_call_ids = set()
+                for tc in item.tool_calls:
+                    if isinstance(tc, dict) and "id" in tc:
+                        tool_call_ids.add(tc["id"])
+                
+                if tool_call_ids:
+                    # Check what immediately follows this assistant message
+                    found_tool_result_ids = set()
+                    j = i + 1
+                    # Collect tool results that immediately follow (stop at first non-tool message)
+                    while j < len(self._messages) and self._messages[j].role == "tool":
+                        tool_result_id = self._messages[j].tool_call_id
+                        if tool_result_id:
+                            found_tool_result_ids.add(tool_result_id)
+                        j += 1
+                    
+                    # Find missing tool_call_ids
+                    missing_ids = tool_call_ids - found_tool_result_ids
+                    if missing_ids:
+                        # Insert error results IMMEDIATELY after assistant message (before any user messages)
+                        # Insert right after the assistant message, before any existing tool results or user messages
+                        insert_position = i + 1
+                        from tools.base import ToolResult
+                        for missing_id in missing_ids:
+                            error_result = ToolResult.error_result(
+                                error="Tool call was not processed",
+                                output="",
+                            )
+                            error_item = MessageItem(
+                                role="tool",
+                                content=error_result.to_model_output(),
+                                tool_call_id=missing_id,
+                                token_count=count_tokens(error_result.to_model_output(), self._model_name),
+                            )
+                            self._messages.insert(insert_position, error_item)
+                            insert_position += 1
+                            # Update i to account for inserted item
+                            i += 1
+            i += 1
 
     def get_messages(self) -> list[dict[str, Any]]:
+        # Validate message history before returning
+        self._validate_message_history()
+        
         messages = []
 
         if self._system_prompt:

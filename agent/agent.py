@@ -81,6 +81,9 @@ class Agent:
                 elif event.type == StreamEventType.MESSAGE_COMPLETE:
                     usage = event.usage
 
+            # Get the index where we'll add the assistant message
+            assistant_message_index = self.session.context_manager.message_count
+            
             self.session.context_manager.add_assistant_message(
                 response_text or None,
                 (
@@ -115,10 +118,25 @@ class Agent:
                 return
 
             tool_call_results: list[ToolResultMessage] = []
+            # Track all tool_call_ids that were added to assistant message
+            assistant_tool_call_ids = {tc.call_id for tc in tool_calls}
 
             for tool_call in tool_calls:
                 if not tool_call.name:
-                    continue  # Skip tool calls without names
+                    # Tool call without name - add error result to ensure API protocol is satisfied
+                    from tools.base import ToolResult
+                    error_result = ToolResult.error_result(
+                        error="Tool call missing name",
+                        output="",
+                    )
+                    tool_call_results.append(
+                        ToolResultMessage(
+                            tool_call_id=tool_call.call_id,
+                            content=error_result.to_model_output(),
+                            is_error=True,
+                        )
+                    )
+                    continue
                 
                 # Parse arguments from string to dict
                 if isinstance(tool_call.arguments, str):
@@ -138,13 +156,21 @@ class Agent:
                     args=parsed_args,
                 )
 
-                result = await self.session.tool_registry.invoke(
-                    tool_call.name,
-                    parsed_args,
-                    self.config.cwd,
-                    self.session.hook_system,
-                    self.session.approval_manager,
-                )
+                try:
+                    result = await self.session.tool_registry.invoke(
+                        tool_call.name,
+                        parsed_args,
+                        self.config.cwd,
+                        self.session.hook_system,
+                        self.session.approval_manager,
+                    )
+                except Exception as e:
+                    # If tool execution fails, add error result to ensure API protocol is satisfied
+                    from tools.base import ToolResult
+                    result = ToolResult.error_result(
+                        error=f"Tool execution failed: {str(e)}",
+                        output="",
+                    )
 
                 yield AgentEvent.tool_call_complete(
                     tool_call.call_id,
@@ -160,11 +186,32 @@ class Agent:
                     )
                 )
 
+            # Add all tool results to context, inserting them immediately after the assistant message
+            # This ensures the API protocol is satisfied: tool results must immediately follow assistant messages with tool_calls
             for tool_result in tool_call_results:
                 self.session.context_manager.add_tool_result(
                     tool_result.tool_call_id,
                     tool_result.content,
+                    insert_after_assistant_index=assistant_message_index,
                 )
+            
+            # CRITICAL: Validate that every tool_call_id in assistant message has a result
+            # This ensures the API protocol is always satisfied
+            tool_result_ids = {tr.tool_call_id for tr in tool_call_results}
+            missing_ids = assistant_tool_call_ids - tool_result_ids
+            if missing_ids:
+                # Defensively add error results for any missing IDs, also inserting after assistant message
+                from tools.base import ToolResult
+                for missing_id in missing_ids:
+                    error_result = ToolResult.error_result(
+                        error="Tool call was not processed",
+                        output="",
+                    )
+                    self.session.context_manager.add_tool_result(
+                        missing_id,
+                        error_result.to_model_output(),
+                        insert_after_assistant_index=assistant_message_index,
+                    )
 
             loop_detection_error = self.session.loop_detector.check_for_loop()
             if loop_detection_error:

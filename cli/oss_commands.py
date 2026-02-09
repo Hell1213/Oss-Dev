@@ -288,10 +288,12 @@ Use 'workflow_orchestrator' tool with action 'get_status' to check current workf
                                     console.print()
                                     
                                     # Inject confirmation result back to agent
-                                    await agent.session.context_manager.add_tool_result(
-                                        event.data.get("call_id", ""),
-                                        "User confirmed: YES. Proceed with push and PR creation."
-                                    )
+                                    # NOTE: add_tool_result is NOT async, so no await needed
+                                    if agent and agent.session and agent.session.context_manager:
+                                        agent.session.context_manager.add_tool_result(
+                                            event.data.get("call_id", ""),
+                                            "User confirmed: YES. Proceed with push and PR creation."
+                                        )
                                 else:
                                     branch_name = workflow.state.branch_name or "your-branch"
                                     decline_content = Text()
@@ -311,10 +313,12 @@ Use 'workflow_orchestrator' tool with action 'get_status' to check current workf
                                     console.print()
                                     
                                     # Inject decline result back to agent
-                                    await agent.session.context_manager.add_tool_result(
-                                        event.data.get("call_id", ""),
-                                        "User declined: NO. Skip push and PR creation. Show manual instructions instead."
-                                    )
+                                    # NOTE: add_tool_result is NOT async, so no await needed
+                                    if agent and agent.session and agent.session.context_manager:
+                                        agent.session.context_manager.add_tool_result(
+                                            event.data.get("call_id", ""),
+                                            "User declined: NO. Skip push and PR creation. Show manual instructions instead."
+                                        )
                                 continue
                             
                             # Show phase transitions prominently with beautiful formatting
@@ -351,8 +355,12 @@ Use 'workflow_orchestrator' tool with action 'get_status' to check current workf
 
 The workflow has {7 - ['repository_understanding', 'issue_intake', 'planning', 'implementation', 'verification', 'validation', 'commit_and_pr'].index(new_phase)} phases remaining. Keep working!"""
                                             # Inject message to continue workflow - agent's next turn will pick this up
-                                            await agent.session.context_manager.add_user_message(continue_message)
-                                            logger.info(f"✅ Injected continue message for phase: {new_phase}")
+                                            # NOTE: add_user_message is NOT async, so no await needed
+                                            if agent and agent.session and agent.session.context_manager:
+                                                agent.session.context_manager.add_user_message(continue_message)
+                                                logger.info(f"✅ Injected continue message for phase: {new_phase}")
+                                            else:
+                                                logger.warning("Agent session not available for message injection")
                                             # Show user that agent will continue
                                             console.print(f"[dim]→ Agent will continue with {current_phase_display}...[/dim]")
                                         except Exception as e:
