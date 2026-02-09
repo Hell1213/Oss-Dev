@@ -125,14 +125,14 @@ class OSSWorkflow:
                     # Branch exists - reuse it
                     self.state.branch_name = expected_branch
                     logger.info(f"Reusing existing branch: {expected_branch}")
-logger.info(f"Starting workflow with issue number: {self.state.issue_number} and issue URL: {self.state.issue_url}")
+
             except Exception as e:
                 logger.debug(f"Could not check branch existence: {e}")
 
         # Initialize phases 1-2 but let Agent work on them
         # Don't execute automatically - Agent needs to work through all phases
         self.state.phase = WorkflowPhase.REPOSITORY_UNDERSTANDING
-        logger.info(f"Set workflow phase to: {self.state.phase}")
+        
         self.state.updated_at = datetime.now()
         self.save_state()
 
@@ -154,7 +154,7 @@ logger.info(f"Starting workflow with issue number: {self.state.issue_number} and
                 self.state.phase = WorkflowPhase(phase_str)
             except ValueError:
                 self.state.phase = WorkflowPhase.REPOSITORY_UNDERSTANDING
-        logger.info(f"Set workflow phase to: {self.state.phase}")
+        
             
             self.state.issue_url = memory.get("issue_url")
             self.state.issue_number = memory.get("issue_number")
@@ -179,7 +179,7 @@ logger.info(f"Starting workflow with issue number: {self.state.issue_number} and
     async def _phase_repository_understanding(self) -> None:
         """Phase 1: Understand repository structure."""
         self.state.phase = WorkflowPhase.REPOSITORY_UNDERSTANDING
-        logger.info(f"Set workflow phase to: {self.state.phase}")
+        
 
         # Check if repository already analyzed
         if await self.repo_manager.is_analyzed():
