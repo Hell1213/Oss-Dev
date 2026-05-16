@@ -2,6 +2,15 @@ import tiktoken
 
 
 def get_tokenizer(model: str):
+    """Get a tokenization function for a model.
+
+    Args:
+        model: Model name used to select a tiktoken encoding.
+
+    Returns:
+        A callable that encodes text into token IDs. Falls back to the
+        ``cl100k_base`` encoding when the model-specific encoding is unavailable.
+    """
     try:
         encoding = tiktoken.encoding_for_model(model)
         return encoding.encode
@@ -11,6 +20,15 @@ def get_tokenizer(model: str):
 
 
 def count_tokens(text: str, model: str = "gemini-2.0-flash-exp") -> int:
+    """Count the number of tokens in text for a model.
+
+    Args:
+        text: Text to count tokens for.
+        model: Model name used to select a tokenizer.
+
+    Returns:
+        Number of tokens in ``text``.
+    """
     tokenizer = get_tokenizer(model)
 
     if tokenizer:
@@ -20,6 +38,14 @@ def count_tokens(text: str, model: str = "gemini-2.0-flash-exp") -> int:
 
 
 def estimate_tokens(text: str) -> int:
+    """Estimate the number of tokens in text using character count.
+
+    Args:
+        text: Text to estimate token count for.
+
+    Returns:
+        Estimated token count, with a minimum of 1.
+    """
     return max(1, len(text) // 4)
 
 
@@ -30,6 +56,19 @@ def truncate_text(
     suffix: str = "\n... [truncated]",
     preserve_lines: bool = True,
 ):
+    """Truncate text to fit within a maximum token count.
+
+    Args:
+        text: Text to truncate.
+        model: Model name used to count tokens.
+        max_tokens: Maximum number of tokens allowed in the returned text.
+        suffix: Text appended when truncation occurs.
+        preserve_lines: Whether to truncate only at line boundaries when possible.
+
+    Returns:
+        The original text when it fits within ``max_tokens``; otherwise, a
+        truncated version with ``suffix`` appended.
+    """
     current_tokens = count_tokens(text, model)
     if current_tokens <= max_tokens:
         return text
