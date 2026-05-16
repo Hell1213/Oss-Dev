@@ -3,10 +3,8 @@ Tests for OSS Workflow orchestrator.
 """
 
 import pytest
-from pathlib import Path
 
 from oss.workflow import OSSWorkflow, WorkflowPhase
-from config.config import Config, OSSConfig
 
 
 @pytest.mark.asyncio
@@ -34,9 +32,10 @@ async def test_workflow_state_management(test_config, temp_dir):
 
 
 @pytest.mark.asyncio
-async def test_workflow_confirmation(test_config, temp_dir):
-    """Test workflow confirmation logic."""
+async def test_workflow_starts_without_branch(test_config, temp_dir):
+    """Test initial workflow branch state."""
     workflow = OSSWorkflow(test_config, repository_path=temp_dir)
-    
-    # Testing confirmation functionality for OSSWorkflow
-    assert workflow.confirmation_required() is True  # Assuming it should require confirmation
+
+    assert workflow.state.branch_name is None
+    assert workflow.state.changes_made is False
+    assert workflow.state.tests_passed is False

@@ -9,7 +9,6 @@ from tools.oss.fetch_issue import FetchIssueTool, FetchIssueParams
 from tools.oss.create_pr import CreatePRTool, CreatePRParams
 from tools.oss.get_pr_status import GetPRStatusTool, GetPRStatusParams
 from tools.oss.list_issues import ListIssuesTool, ListIssuesParams
-from config.config import Config, OSSConfig
 
 
 @pytest.mark.asyncio

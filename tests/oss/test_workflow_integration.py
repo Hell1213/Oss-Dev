@@ -3,10 +3,8 @@ Integration tests for OSS workflow.
 """
 
 import pytest
-from pathlib import Path
 
 from oss.workflow import OSSWorkflow, WorkflowPhase
-from config.config import Config, OSSConfig
 
 
 @pytest.mark.asyncio
@@ -19,12 +17,12 @@ async def test_workflow_start(test_config, temp_dir):
     # Mock issue URL
     issue_url = valid_issue_url
     
-    # Start workflow (will execute phases 1-2)
+    # Start workflow at repository understanding.
     state = await workflow.start(issue_url)
     
     assert state.issue_url == issue_url
     assert state.issue_number == 21
-    assert state.phase == WorkflowPhase.PLANNING  # Should be at planning after start
+    assert state.phase == WorkflowPhase.REPOSITORY_UNDERSTANDING
 
 
 @pytest.mark.asyncio

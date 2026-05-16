@@ -2,8 +2,6 @@
 Tool for getting user confirmation before push/PR operations.
 """
 import logging
-from pathlib import Path
-from typing import Any
 
 from pydantic import BaseModel
 

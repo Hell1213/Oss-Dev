@@ -2,7 +2,6 @@
 Tests for OSS-specific prompts.
 """
 
-import pytest
 
 from prompts.oss import (
     get_oss_identity_prompt,
@@ -124,7 +123,7 @@ def test_commit_and_pr_prompt():
     }
     prompt = get_commit_and_pr_prompt(context)
     assert "Phase 7" in prompt
-    assert "Commit & PR" in prompt
+    assert "Commit & Pull Request" in prompt
     assert "123" in prompt
     assert "conventional commit" in prompt.lower() or "type(scope)" in prompt
 

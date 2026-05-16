@@ -11,7 +11,6 @@ from typing import Any, Optional
 from dataclasses import dataclass, asdict
 from datetime import datetime
 
-from config.config import Config
 
 
 @dataclass

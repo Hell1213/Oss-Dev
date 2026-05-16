@@ -6,7 +6,6 @@ import pytest
 from pathlib import Path
 
 from oss.repository import RepositoryManager
-from config.config import Config, OSSConfig
 
 
 @pytest.mark.asyncio

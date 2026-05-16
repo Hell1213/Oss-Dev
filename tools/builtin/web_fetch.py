@@ -26,7 +26,7 @@ class WebFetchTool(Tool):
 
         parsed = urlparse(params.url)
         if not parsed.scheme or parsed.scheme not in ("http", "https"):
-            return ToolResult.error_result(f"Url must be http:// or https://")
+            return ToolResult.error_result("Url must be http:// or https://")
 
         try:
             async with httpx.AsyncClient(

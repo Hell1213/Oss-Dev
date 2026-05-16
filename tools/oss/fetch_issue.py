@@ -4,7 +4,6 @@ Fetch Issue Tool
 Fetch GitHub issue details.
 """
 
-from pathlib import Path
 from tools.base import Tool, ToolInvocation, ToolKind, ToolResult
 from pydantic import BaseModel, Field
 
@@ -32,7 +31,6 @@ class FetchIssueTool(Tool):
     async def execute(self, invocation: ToolInvocation) -> ToolResult:
         """Execute fetch issue command"""
         params = FetchIssueParams(**invocation.params)
-        repo_path = Path(params.path) if params.path else invocation.cwd
 
         try:
             github_client = GitHubClient(self.config)

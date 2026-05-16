@@ -2,7 +2,6 @@ from typing import Any
 from config.config import Config
 from tools.base import Tool, ToolInvocation, ToolKind, ToolResult
 from tools.mcp.client import MCPClient, MCPToolInfo
-from utils.paths import resolve_path
 
 
 class MCPTool(Tool):

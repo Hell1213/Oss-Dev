@@ -3,14 +3,12 @@ Tests for Git tools.
 """
 
 import pytest
-from pathlib import Path
 import subprocess
 
 from tools.oss.git_status import GitStatusTool, GitStatusParams
 from tools.oss.git_branch import GitBranchTool, GitBranchParams
 from tools.oss.git_commit import GitCommitTool, GitCommitParams
 from tools.oss.git_diff import GitDiffTool, GitDiffParams
-from config.config import Config, OSSConfig
 
 
 @pytest.fixture

@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import AsyncGenerator, Awaitable, Callable
+from typing import AsyncGenerator, Callable
 from agent.events import AgentEvent, AgentEventType
 from agent.session import Session
 from client.response import StreamEventType, TokenUsage, ToolCall, ToolResultMessage, parse_tool_call_arguments

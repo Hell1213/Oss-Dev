@@ -1,6 +1,4 @@
 import json
-import uuid
-from config.config import Config
 from config.loader import get_data_dir
 from tools.base import Tool, ToolInvocation, ToolKind, ToolResult
 from pydantic import BaseModel, Field
@@ -90,12 +88,12 @@ class MemoryTool(Tool):
             entries = memory.get("entries", {})
             if not entries:
                 return ToolResult.success_result(
-                    f"No memories stored",
+                    "No memories stored",
                     metadata={
                         "found": False,
                     },
                 )
-            lines = [f"Stored memories:"]
+            lines = ["Stored memories:"]
             for key, value in sorted(entries.items()):
                 lines.append(f"  {key}: {value}")
 

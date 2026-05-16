@@ -208,12 +208,12 @@ class CLI:
                 )
         elif cmd_name == "/resume":
             if not cmd_args:
-                console.print(f"[error]Usage: /resume <session_id> [/error]")
+                console.print("[error]Usage: /resume <session_id> [/error]")
             else:
                 persistence_manager = PersistenceManager()
                 snapshot = persistence_manager.load_session(cmd_args)
                 if not snapshot:
-                    console.print(f"[error]Session does not exist [/error]")
+                    console.print("[error]Session does not exist [/error]")
                 else:
                     session = Session(
                         config=self.config,
@@ -262,12 +262,12 @@ class CLI:
             console.print(f"[success]Checkpoint created: {checkpoint_id}[/success]")
         elif cmd_name == "/restore":
             if not cmd_args:
-                console.print(f"[error]Usage: /restire <checkpoint_id> [/error]")
+                console.print("[error]Usage: /restire <checkpoint_id> [/error]")
             else:
                 persistence_manager = PersistenceManager()
                 snapshot = persistence_manager.load_checkpoint(cmd_args)
                 if not snapshot:
-                    console.print(f"[error]Checkpoint does not exist [/error]")
+                    console.print("[error]Checkpoint does not exist [/error]")
                 else:
                     session = Session(
                         config=self.config,
@@ -304,12 +304,12 @@ class CLI:
                     )
         elif cmd_name == "/oss-fix":
             if not cmd_args:
-                console.print(f"[error]Usage: /oss-fix <github_issue_url> [/error]")
+                console.print("[error]Usage: /oss-fix <github_issue_url> [/error]")
             else:
                 await self._handle_oss_fix(cmd_args)
         elif cmd_name == "/oss-review":
             if not cmd_args:
-                console.print(f"[error]Usage: /oss-review <issue_number> [/error]")
+                console.print("[error]Usage: /oss-review <issue_number> [/error]")
             else:
                 await self._handle_oss_review(cmd_args)
         elif cmd_name == "/oss-resume":
@@ -387,7 +387,7 @@ Please use the 'workflow_orchestrator' tool to manage the workflow and proceed t
         except Exception:
             pass
 
-        console.print(f"[error]Could not determine repository. Please provide full issue URL.[/error]")
+        console.print("[error]Could not determine repository. Please provide full issue URL.[/error]")
 
     async def _handle_oss_resume(self) -> None:
         """Handle oss-dev resume command."""
@@ -494,7 +494,7 @@ def chat(ctx: click.Context, prompt: str, cwd: Path | None):
         console.print(f"[error]Configuration Error: {e}[/error]")
         sys.exit(1)
 
-    errors = config.validate()
+    errors = config.validate_runtime()
     if errors:
         for error in errors:
             console.print(f"[error]{error}[/error]")
@@ -524,7 +524,7 @@ def interactive(ctx: click.Context, cwd: Path | None):
         console.print(f"[error]Configuration Error: {e}[/error]")
         sys.exit(1)
 
-    errors = config.validate()
+    errors = config.validate_runtime()
     if errors:
         for error in errors:
             console.print(f"[error]{error}[/error]")
@@ -536,7 +536,6 @@ def interactive(ctx: click.Context, cwd: Path | None):
 
 # Add OSS command group
 # Fixed missing import for OSS commands
-from cli.oss_commands import oss_dev_group
 from cli.oss_commands import oss_dev_group
 main.add_command(oss_dev_group)
 

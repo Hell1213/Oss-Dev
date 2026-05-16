@@ -14,13 +14,8 @@ import click
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
-from rich.rule import Rule
 from rich.text import Text
 from rich import box
-from rich.align import Align
-from rich.spinner import Spinner
-from rich.live import Live
-from rich.status import Status
 
 console = Console()
 logger = logging.getLogger(__name__)
@@ -84,7 +79,6 @@ def oss_dev_group(ctx: click.Context, cwd: Optional[Path]):
     ctx.ensure_object(dict)
     
     # Import here to avoid circular imports
-    from config.config import Config
     from config.loader import load_config
     
     # Load config
@@ -96,7 +90,7 @@ def oss_dev_group(ctx: click.Context, cwd: Optional[Path]):
         console.print(f"[error]Configuration Error: {e}[/error]")
         ctx.exit(1)
     
-    errors = config.validate()
+    errors = config.validate_runtime()
     if errors:
         for error in errors:
             console.print(f"[error]{error}[/error]")
@@ -191,8 +185,6 @@ Use 'workflow_orchestrator' tool with action 'get_status' to check current workf
             current_phase_display = state.phase.value.replace("_", " ").title()
             last_tool_name = None
             tool_call_count = 0
-            status = None
-            branch_warning_shown = False  # Track if branch warning was already shown
             
             # Run Agent with workflow guidance
             async with Agent(config) as agent:
@@ -210,7 +202,7 @@ Use 'workflow_orchestrator' tool with action 'get_status' to check current workf
                             pass
                         elif event.type == AgentEventType.TEXT_COMPLETE:
                             # Suppress verbose LLM output
-                            logger.debug(f"LLM text complete")
+                            logger.debug("LLM text complete")
                             # Don't print to console - too verbose
                             pass
                         elif event.type == AgentEventType.TOOL_CALL_START:
@@ -366,7 +358,7 @@ The workflow has {7 - ['repository_understanding', 'issue_intake', 'planning', '
                                             console.print(f"[dim]→ Agent will continue with {current_phase_display}...[/dim]")
                                         except Exception as e:
                                             logger.error(f"❌ Could not inject continue message: {e}")
-                                            console.print(f"[error]Warning: Could not inject continue message. Agent may stop.[/error]")
+                                            console.print("[error]Warning: Could not inject continue message. Agent may stop.[/error]")
                             else:
                                 # Show completion only for important operations
                                 # Avoid duplicate messages by checking if we already showed this tool
@@ -741,7 +733,7 @@ def oss_list(ctx: click.Context):
         console.print()
     
     if current_branch:
-        console.print(f"[dim]* Current branch[/dim]\n")
+        console.print("[dim]* Current branch[/dim]\n")
 
 
 @oss_dev_group.command(name="switch", help="Switch to a different branch or issue")
@@ -797,7 +789,7 @@ def oss_switch(ctx: click.Context, target: str):
         # Show context
         summary = memory_manager.get_branch_summary(target)
         if summary.get("exists"):
-            console.print(f"\n[bold]Branch Context:[/bold]")
+            console.print("\n[bold]Branch Context:[/bold]")
             console.print(f"  Issue: #{summary.get('issue_number', 'N/A')}")
             console.print(f"  Phase: {summary.get('current_phase', 'unknown')}")
             console.print(f"  Status: {summary.get('status', 'unknown')}")

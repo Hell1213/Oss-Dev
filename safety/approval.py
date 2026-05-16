@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
 import re
-from typing import Any, Awaitable, Callable
+from typing import Any, Callable
 from config.config import ApprovalPolicy
 from tools.base import ToolConfirmation
 

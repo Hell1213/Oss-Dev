@@ -9,7 +9,7 @@ import logging
 from tools.base import Tool, ToolInvocation, ToolKind, ToolResult
 from pydantic import BaseModel, Field
 
-from oss.workflow import OSSWorkflow, WorkflowPhase
+from oss.workflow import OSSWorkflow
 
 logger = logging.getLogger(__name__)
 

@@ -1,6 +1,5 @@
 import os
 from pathlib import Path
-import re
 from tools.base import Tool, ToolInvocation, ToolKind, ToolResult
 from pydantic import BaseModel, Field
 
@@ -47,7 +46,7 @@ class GlobTool(Tool):
             output_lines.append(str(rel_path))
 
         if len(matches) > 1000:
-            output_lines.append(f"...(limited to 1000 results)")
+            output_lines.append("...(limited to 1000 results)")
 
         return ToolResult.success_result(
             "\n".join(output_lines),

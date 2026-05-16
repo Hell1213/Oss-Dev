@@ -758,8 +758,6 @@ When validation passes and you're ready to commit:
         issue_title = self.state.issue_data.get("title", "Unknown") if self.state.issue_data else "Unknown"
         branch_name = self.state.branch_name or "fix/issue-unknown"
         
-        # Determine commit scope from modified files
-        analysis = self.state.repository_analysis or {}
         files_modified = getattr(self.state, "files_modified", [])
         
         # Infer scope from file paths
@@ -923,7 +921,6 @@ After PR is successfully created:
             (is_valid, error_message)
         """
         import subprocess
-        from pathlib import Path
         
         # Check 1: Branch must be created and we must be on it
         try:
@@ -1049,7 +1046,7 @@ After PR is successfully created:
             if previous_phase == WorkflowPhase.IMPLEMENTATION.value:
                 await self._track_modified_files()
                 self.state.changes_made = True
-                logger.info(f"Tracked file modifications after implementation phase")
+                logger.info("Tracked file modifications after implementation phase")
             
             self.state.phase = phase_order[current_idx + 1]
             self.state.updated_at = datetime.now()

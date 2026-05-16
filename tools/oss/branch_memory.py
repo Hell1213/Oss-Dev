@@ -4,7 +4,6 @@ Branch Memory Management Tool
 Tool for managing branch-level memory, switching branches, and context management.
 """
 
-from pathlib import Path
 from tools.base import Tool, ToolInvocation, ToolKind, ToolResult
 from pydantic import BaseModel, Field
 

@@ -195,11 +195,11 @@ class Config(BaseModel):
     def temperature(self) -> float:
         return self.model.temperature
 
-    @model_name.setter
-    def temperature(self, value: str) -> None:
+    @temperature.setter
+    def temperature(self, value: float) -> None:
         self.model.temperature = value
 
-    def validate(self) -> list[str]:
+    def validate_runtime(self) -> list[str]:
         errors: list[str] = []
 
         if not self.api_key:

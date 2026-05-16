@@ -8,6 +8,7 @@ __pycache__
 *.so
 *.egg
 *.egg-info
+*.egg-info/
 dist/
 build/
 *.log
@@ -24,7 +25,6 @@ build/
 *~
 
 # OSS Dev Agent specific
-docs/
 .oss-dev/
 *.checkpoint
 *.snapshot
@@ -35,6 +35,8 @@ __pycache__/
 *.py[cod]
 *$py.class
 .pytest_cache/
+.mypy_cache/
+.ruff_cache/
 .coverage
 htmlcov/
 .tox/

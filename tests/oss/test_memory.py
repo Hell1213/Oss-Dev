@@ -2,7 +2,6 @@
 Tests for Branch Memory Manager.
 """
 
-import pytest
 from pathlib import Path
 
 from oss.memory import BranchMemoryManager, BranchMemoryData

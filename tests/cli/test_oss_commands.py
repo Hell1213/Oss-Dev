@@ -4,7 +4,6 @@ Tests for OSS CLI commands.
 
 import pytest
 from click.testing import CliRunner
-from pathlib import Path
 
 from cli.oss_commands import oss_dev_group
 

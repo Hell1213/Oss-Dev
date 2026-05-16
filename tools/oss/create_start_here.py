@@ -44,7 +44,7 @@ class CreateStartHereTool(Tool):
             return ToolConfirmation(
                 tool_name=self.name,
                 params=invocation.params,
-                description=f"START_HERE.md already exists. Use force=true to overwrite.",
+                description="START_HERE.md already exists. Use force=true to overwrite.",
                 affected_paths=[start_here_path],
             )
 
@@ -70,7 +70,7 @@ class CreateStartHereTool(Tool):
                 )
 
             # Perform analysis and create START_HERE.md
-            analysis = await manager.analyze()
+            await manager.analyze()
 
             if manager.start_here_path.exists():
                 return ToolResult.success_result(

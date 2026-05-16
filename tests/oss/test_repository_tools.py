@@ -3,12 +3,10 @@ Tests for repository analysis tools.
 """
 
 import pytest
-from pathlib import Path
 
 from tools.oss.analyze_repository import AnalyzeRepositoryTool, AnalyzeRepositoryParams
 from tools.oss.check_start_here import CheckStartHereTool, CheckStartHereParams
 from tools.oss.create_start_here import CreateStartHereTool, CreateStartHereParams
-from config.config import Config, OSSConfig
 
 
 @pytest.mark.asyncio

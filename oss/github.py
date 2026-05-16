@@ -8,9 +8,7 @@ with fallback to GitHub API when needed.
 import json
 import re
 import subprocess
-from pathlib import Path
 from typing import Any, Optional
-from urllib.parse import urlparse
 
 from config.config import Config
 

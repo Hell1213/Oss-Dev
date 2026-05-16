@@ -5,7 +5,7 @@ from hooks.hook_system import HookSystem
 from safety.approval import ApprovalContext, ApprovalDecision, ApprovalManager
 from tools.base import Tool, ToolInvocation, ToolResult
 import logging
-from tools.builtin import ReadFileTool, get_all_builtin_tools
+from tools.builtin import get_all_builtin_tools
 from tools.subagents import SubagentTool, get_default_subagent_definitions
 from tools.oss import get_oss_tools
 
