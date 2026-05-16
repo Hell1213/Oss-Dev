@@ -55,21 +55,17 @@
 
 ## Phase 6 — OSS Governance
 
+- [x] README.md (consolidated setup + commands + vision)
 - [x] ARCHITECTURE.md
 - [x] CONTRIBUTING.md
 - [x] ROADMAP.md
 - [x] SECURITY.md
 - [x] CODE_OF_CONDUCT.md
-- [x] SETUP.md
-- [x] COMMANDS.md
-- [x] PLUGIN_DEVELOPMENT.md
-- [x] MAINTAINERS.md
 - [x] CHANGELOG.md
-- [x] VISION.md
 - [x] FAQ.md
 - [x] Issue templates
 - [x] PR template
-- [x] GitHub labels
+- [ ] GitHub labels
 
 ## Phase 7 — Provider Expansion
 

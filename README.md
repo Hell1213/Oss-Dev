@@ -14,44 +14,99 @@
 ## Quick Start
 
 ```bash
-# Install
+# Clone and install
+git clone https://github.com/anomalyco/oss-dev.git
+cd oss-dev
 uv sync --dev
 
-# Discover issues to work on
-uv run oss-dev discover issues --good-first
+# Set credentials
+export GITHUB_TOKEN=your_github_token
+export GEMINI_API_KEY=your_gemini_api_key
 
-# Get mentoring through a contribution
-uv run oss-dev mentor https://github.com/owner/repo/issues/123
+# Verify
+uv run oss-dev --version
+uv run pytest
 ```
 
-## What is OSS-Dev?
+## Vision
 
-OSS-Dev helps developers contribute to open source by automating workflow mechanics while preserving quality standards.
+Open source contribution is needlessly hard. New contributors face unclear starting points, complex workflow mechanics, and overwhelming codebases. OSS-Dev is a CLI platform that:
 
-### For Contributors
+1. **Discovers** — Find projects and issues matching your skills
+2. **Guides** — Step-by-step mentoring through contributions
+3. **Automates** — Mechanical workflow (branching, commits, PRs)
+4. **Analyzes** — Repository intelligence for contribution readiness
+5. **Connects** — Community features and mentoring
 
-- **Discover** — Find projects and issues matching your skills
-- **Mentor** — Step-by-step guidance through your first contributions
-- **Automate** — Branching, commits, PRs handled for you
-- **Learn** — Understand codebases through intelligent analysis
+**Target users:** First-time contributors, GSSoC/GSoC participants, students, maintainers, and developer communities.
 
-### For Maintainers
-
-- **Quality** — Contributions arrive in consistent, reviewable format
-- **Scale** — Process more issues without sacrificing standards
-- **Onboard** — Automatic contributor guidance reduces questions
+**Design principles:** Contributor-first, deterministic behavior, safety gates, extensibility, professional CLI experience.
 
 ## Installation
 
-See [SETUP.md](SETUP.md) for detailed setup instructions.
+### Prerequisites
 
-**Prerequisites:**
 - Python 3.12+
 - Git
-- GitHub CLI (recommended) or `GITHUB_TOKEN`
-- Gemini API key
+- GitHub CLI (`gh`) — recommended for OSS features
+- Gemini API key (from [Google AI Studio](https://aistudio.google.com/apikey))
+
+### Setup
+
+```bash
+# Clone and install
+git clone https://github.com/anomalyco/oss-dev.git
+cd oss-dev
+uv sync --dev
+
+# Verify
+uv run oss-dev --version
+uv run pytest
+```
+
+### Configuration
+
+Set environment variables:
+
+```bash
+export GITHUB_TOKEN=your_github_token
+export GEMINI_API_KEY=your_gemini_api_key
+```
+
+Optional project config (`.oss-dev/config.toml`):
+
+```toml
+[model]
+name = "gemini-2.0-flash-exp"
+provider = "gemini"
+
+[oss]
+enabled = true
+default_base_branch = "main"
+```
+
+### GitHub CLI Setup (Optional but Recommended)
+
+```bash
+sudo apt install gh
+gh auth login
+```
+
+### Troubleshooting
+
+Run `uv run oss-dev doctor` for system diagnostics.
 
 ## Commands
+
+### Global Options
+
+| Option | Description |
+|--------|-------------|
+| `--version, -V` | Show version |
+| `--cwd, -C PATH` | Working directory |
+| `--help` | Show help |
+
+### Command Reference
 
 | Command | Description |
 |---------|-------------|
@@ -65,10 +120,15 @@ See [SETUP.md](SETUP.md) for detailed setup instructions.
 | `oss-dev mentor <issue-url>` | Guided contribution workflow |
 | `oss-dev docs [query]` | Search documentation |
 | `oss-dev doctor` | Run diagnostics |
-| `oss-dev plugins` | Manage plugins |
 | `oss-dev config` | Manage configuration |
 
-See [COMMANDS.md](COMMANDS.md) for full documentation.
+### Exit Codes
+
+| Code | Meaning |
+|------|---------|
+| 0 | Success |
+| 1 | Error |
+| 2 | CLI usage error |
 
 ## Architecture
 
@@ -88,27 +148,9 @@ See [ROADMAP.md](ROADMAP.md) for planned features and [CHANGELOG.md](CHANGELOG.m
 
 ## Contributing
 
-We welcome contributions! See [CONTRIBUTING.md](CONTRIBUTING.md) to get started.
+We welcome contributions! See [CONTRIBUTING.md](CONTRIBUTING.md) to get started. Look for [good first issues](https://github.com/anomalyco/oss-dev/labels/good%20first%20issue) to find starter tasks.
 
-- First time? Look for [good first issues](https://github.com/anomalyco/oss-dev/labels/good%20first%20issue)
-- Check [FAQ.md](FAQ.md) for common questions
-- Review our [Code of Conduct](CODE_OF_CONDUCT.md)
-
-## Documentation
-
-| Document | Purpose |
-|----------|---------|
-| [SETUP.md](SETUP.md) | Development environment setup |
-| [COMMANDS.md](COMMANDS.md) | CLI command reference |
-| [ARCHITECTURE.md](ARCHITECTURE.md) | Architecture blueprint |
-| [PLUGIN_DEVELOPMENT.md](PLUGIN_DEVELOPMENT.md) | Plugin development guide |
-| [CONTRIBUTING.md](CONTRIBUTING.md) | Contribution guidelines |
-| [ROADMAP.md](ROADMAP.md) | Feature roadmap |
-| [VISION.md](VISION.md) | Project vision |
-| [FAQ.md](FAQ.md) | Frequently asked questions |
-| [SECURITY.md](SECURITY.md) | Security policy |
-| [MAINTAINERS.md](MAINTAINERS.md) | Maintainer guide |
-| [CHANGELOG.md](CHANGELOG.md) | Release history |
+Questions? Check [FAQ.md](FAQ.md) or open a discussion.
 
 ## License
 

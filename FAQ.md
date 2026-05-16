@@ -20,7 +20,7 @@ Yes, for AI-powered features. Get one at https://aistudio.google.com/apikey
 Recommended but not required. You can set `GITHUB_TOKEN` environment variable instead.
 
 **Can I use OpenAI instead of Gemini?**
-Yes, set `provider = "openai"` in config and `API_KEY` environment variable.
+Experimental — the OpenAI provider is mostly unimplemented (raises `NotImplementedError` for most methods). Set `provider = "openai"` and `API_KEY` env var at your own risk.
 
 ## Usage
 
@@ -39,10 +39,10 @@ Yes. Tokens are loaded from environment variables only, never logged or stored i
 ## Development
 
 **How do I install from source?**
-See [SETUP.md](SETUP.md)
+See [README.md](README.md) (Setup section)
 
 **How do I write a plugin?**
-See [PLUGIN_DEVELOPMENT.md](PLUGIN_DEVELOPMENT.md)
+Plugin interfaces exist but a full plugin development guide is not yet published. See [CONTRIBUTING.md](CONTRIBUTING.md) for now.
 
 **How do I contribute?**
 See [CONTRIBUTING.md](CONTRIBUTING.md)

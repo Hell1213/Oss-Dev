@@ -12,10 +12,6 @@ uv run pytest
 uv run oss-dev --help
 ```
 
-## Development Setup
-
-See [SETUP.md](SETUP.md) for detailed development environment setup.
-
 ## Code Standards
 
 - **Python 3.12+** — f-strings, type hints, modern patterns
@@ -23,10 +19,6 @@ See [SETUP.md](SETUP.md) for detailed development environment setup.
 - **Mypy** — type checking (`uv run mypy`)
 - **Pytest** — testing (`uv run pytest`)
 - **Coverage** — coverage reports (`uv run coverage run -m pytest && coverage report`)
-
-## Architecture
-
-See [ARCHITECTURE.md](ARCHITECTURE.md) for the complete architectural blueprint.
 
 ## Pull Request Process
 
@@ -37,6 +29,13 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for the complete architectural blueprint.
 5. Add tests for new functionality
 6. Run all checks: `ruff check`, `mypy`, `pytest`
 7. Submit PR with clear description referencing the issue
+
+## Review Process
+
+1. All PRs need at least one maintainer approval
+2. PRs must pass all CI checks (lint, typecheck, tests)
+3. Changes to `src/oss_dev/core/` require architecture review
+4. New dependencies require justification
 
 ## Commit Messages
 
