@@ -3,6 +3,7 @@
 Professional Typer-based CLI with consistent UX, rich output, and actionable errors.
 """
 
+import re
 from pathlib import Path
 from typing import Optional
 
@@ -28,6 +29,18 @@ def _version_callback(value: bool) -> None:
     if value:
         typer.echo(f"oss-dev v{__version__}")
         raise typer.Exit()
+
+
+def _parse_issue_number(issue_url: str) -> int:
+    pattern = r"^https?://github\.com/[^/]+/[^/]+/issues/([1-9]\d*)(?:[/?#].*)?$"
+    match = re.match(pattern, issue_url)
+    if not match:
+        raise typer.BadParameter(
+            "issue_url must be a GitHub issue URL with a positive issue number, "
+            "for example: https://github.com/owner/repo/issues/123"
+        )
+
+    return int(match.group(1))
 
 
 @app.callback(invoke_without_command=True)
@@ -112,7 +125,8 @@ def mentor(
     resume: bool = typer.Option(False, "--resume", "-r", help="Resume from last checkpoint."),
 ) -> None:
     """Get step-by-step mentoring through a contribution."""
-    typer.echo(f"Mentoring for {issue_url}...")
+    issue_number = _parse_issue_number(issue_url)
+    typer.echo(f"Mentoring for issue #{issue_number}: {issue_url}...")
 
 
 @app.command()
