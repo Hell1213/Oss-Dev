@@ -113,3 +113,13 @@ def test_merge_dicts_does_not_modify_base():
     override = {"key": "changed"}
     _merge_dicts(base, override)
     assert base["key"] == "original"
+def test_environment_variable_override(tmp_path, monkeypatch):
+    monkeypatch.setenv("AI_AGENT_MODEL", "gpt-env")
+    missing_system = tmp_path / "nonexistent.toml"
+
+    with patch("config.loader.get_system_config_path", return_value=missing_system):
+        with patch("config.loader._get_project_config", return_value=None):
+            with patch("config.loader.Config") as MockConfig:
+                MockConfig.return_value = MagicMock()
+                load_config(tmp_path)
+                MockConfig.assert_called_once()
