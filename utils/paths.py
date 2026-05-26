@@ -1,7 +1,17 @@
 from pathlib import Path
 
-
 def resolve_path(base: str | Path, path: str | Path):
+
+    """Resolve a path relative to a base directory.
+
+    Args:
+        base: Base directory path
+        path: Target path to resolve
+
+    Returns:
+        Absolute resolved path.
+    """
+    
     path = Path(path)
     if path.is_absolute():
         return path.resolve()
@@ -10,6 +20,17 @@ def resolve_path(base: str | Path, path: str | Path):
 
 
 def display_path_rel_to_cwd(path: str, cwd: Path | None) -> str:
+
+    """Display a path relative to the current working directory.
+
+    Args:
+        path: Path to display.
+        cwd: Current working directory path.
+
+    Returns:
+        Relative path if possible, otherwise the original path.
+    """
+
     try:
         p = Path(path)
     except Exception:
@@ -25,6 +46,16 @@ def display_path_rel_to_cwd(path: str, cwd: Path | None) -> str:
 
 
 def ensure_parent_directory(path: str | Path) -> Path:
+
+    """Ensure the parent directory for a path exists.
+
+    Args:
+        path: File or directory path.
+
+    Returns:
+        Path object with ensured parent directories.
+    """
+
     path = Path(path)
 
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -32,6 +63,16 @@ def ensure_parent_directory(path: str | Path) -> Path:
 
 
 def is_binary_file(path: str | Path) -> bool:
+
+    """Check whether a file is binary.
+
+    Args:
+        path: Path to the file.
+
+    Returns:
+        True if the file is binary, otherwise False.
+    """
+    
     try:
         with open(path, "rb") as f:
             chunk = f.read(8192)
