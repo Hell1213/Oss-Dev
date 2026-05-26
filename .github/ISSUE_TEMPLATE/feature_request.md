@@ -1,18 +1,18 @@
 ---
 name: Feature request
 about: Suggest an idea for OSS-Dev
-title: "[feat] "
+title: "[FEATURE] "
 labels: enhancement
 assignees: ""
 ---
 
 ## Problem
 
-What problem does this feature solve?
+Describe the problem or limitation this feature aims to solve
 
 ## Solution
 
-Describe the solution you'd like.
+Describe your proposed solution in detail.
 
 ## Alternatives
 
@@ -20,4 +20,4 @@ What alternatives have you considered?
 
 ## Context
 
-Add any context, screenshots, or CLI output.
+Add any additional context, screenshots, examples, or CLI output here .

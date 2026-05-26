@@ -1,7 +1,7 @@
 ---
 name: Bug report
 about: Report a bug to help us improve
-title: "[bug] "
+title: "[BUG] "
 labels: bug
 assignees: ""
 ---
@@ -10,10 +10,17 @@ assignees: ""
 
 A clear description of the bug.
 
+## Severity 
+
+- [ ] Low
+- [ ] Medium
+- [ ] High
+- [ ] Critical
+
 ## Reproduction
 
 Steps to reproduce:
-1. Run `oss-dev ...`
+1. Run the command `oss-dev <command>`
 2. See error
 
 ## Expected Behavior
