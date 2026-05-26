@@ -859,3 +859,97 @@ Continue from where we left off."""
             f"Use 'oss-dev review <issue_number>' to start working on an issue."
         )
         ctx.exit(1)
+@oss_dev_group.command(name="doctor", help="Run system diagnostics")
+@click.pass_context
+def oss_doctor(ctx: click.Context):
+    """Run full system diagnostics."""
+    import os
+    import sys
+    import shutil
+
+    console.print()
+    console.print(Panel(
+        Text("Running system diagnostics...", style="cyan"),
+        title="[bold cyan]🩺 OSS Dev Doctor[/bold cyan]",
+        border_style="cyan",
+        box=box.ROUNDED,
+        padding=(1, 2),
+    ))
+    console.print()
+
+    results = []
+
+    # 1. Check Python version
+    version = sys.version_info
+    if version >= (3, 10):
+        results.append(("Python Version", f"{version.major}.{version.minor}.{version.micro}", "pass"))
+    else:
+        results.append(("Python Version", f"{version.major}.{version.minor} (3.10+ required)", "fail"))
+
+    # 2. Check git
+    if shutil.which("git"):
+        results.append(("git CLI", "Installed", "pass"))
+    else:
+        results.append(("git CLI", "Not found", "fail"))
+
+    # 3. Check gh CLI
+    if shutil.which("gh"):
+        try:
+            r = subprocess.run(["gh", "auth", "status"], capture_output=True, text=True)
+            if r.returncode == 0:
+                results.append(("gh CLI", "Installed & Authenticated", "pass"))
+            else:
+                results.append(("gh CLI", "Installed but NOT authenticated", "warn"))
+        except Exception:
+            results.append(("gh CLI", "Installed but check failed", "warn"))
+    else:
+        results.append(("gh CLI", "Not found", "fail"))
+
+    # 4. Check config file
+    config_path = Path.home() / ".oss-dev" / "config.toml"
+    if config_path.exists():
+        results.append(("Config File", str(config_path), "pass"))
+    else:
+        results.append(("Config File", "Not found", "warn"))
+
+    # 5. Check GEMINI_API_KEY
+    if os.environ.get("GEMINI_API_KEY"):
+        results.append(("GEMINI_API_KEY", "Set ✓", "pass"))
+    else:
+        results.append(("GEMINI_API_KEY", "Not set", "warn"))
+
+    # 6. Check GITHUB_TOKEN
+    if os.environ.get("GITHUB_TOKEN"):
+        results.append(("GITHUB_TOKEN", "Set ✓", "pass"))
+    else:
+        results.append(("GITHUB_TOKEN", "Not set", "warn"))
+
+    # Display results table
+    table = Table(box=box.ROUNDED, border_style="cyan", show_header=True)
+    table.add_column("Check", style="bold white", width=20)
+    table.add_column("Status", width=35)
+    table.add_column("Result", width=8, justify="center")
+
+    for check, detail, status in results:
+        if status == "pass":
+            icon = "[green]✓ PASS[/green]"
+        elif status == "warn":
+            icon = "[yellow]⚠ WARN[/yellow]"
+        else:
+            icon = "[red]✗ FAIL[/red]"
+        table.add_row(check, detail, icon)
+
+    console.print(table)
+    console.print()
+
+    # Summary
+    fails = sum(1 for _, _, s in results if s == "fail")
+    warns = sum(1 for _, _, s in results if s == "warn")
+
+    if fails == 0 and warns == 0:
+        console.print(Panel("[green]All checks passed! System is ready.[/green]", border_style="green", box=box.ROUNDED))
+    elif fails == 0:
+        console.print(Panel(f"[yellow]{warns} warning(s). Review above.[/yellow]", border_style="yellow", box=box.ROUNDED))
+    else:
+        console.print(Panel(f"[red]{fails} check(s) failed. Please fix issues above.[/red]", border_style="red", box=box.ROUNDED))
+    console.print()
