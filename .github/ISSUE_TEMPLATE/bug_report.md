@@ -20,7 +20,10 @@ A clear description of the bug.
 ## Reproduction
 
 Steps to reproduce:
-1. Run the command `oss-dev <command>`
+1. Run the command:
+
+   ```bash
+   oss-dev <command>
 2. See error
 
 ## Expected Behavior
