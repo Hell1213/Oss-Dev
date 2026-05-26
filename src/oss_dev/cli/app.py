@@ -10,6 +10,7 @@ from typing import Optional
 import typer
 
 from oss_dev._version import __version__
+from oss_dev.cli.progress import progress_bar
 
 app = typer.Typer(
     name="oss-dev",
@@ -39,7 +40,6 @@ def _parse_issue_number(issue_url: str) -> int:
             "issue_url must be a GitHub issue URL with a positive issue number, "
             "for example: https://github.com/owner/repo/issues/123"
         )
-
     return int(match.group(1))
 
 
@@ -59,7 +59,10 @@ def discover_repos(
     limit: int = typer.Option(10, "--limit", help="Maximum results."),
 ) -> None:
     """Discover open source repositories to contribute to."""
-    typer.echo("Discovering repositories...")
+    with progress_bar("Discovering repositories...") as (progress, task):
+        import time
+        time.sleep(2)  # simulates real work
+        progress.update(task, description="Repositories discovered!")
 
 
 @discover_app.command("issues")
@@ -70,7 +73,10 @@ def discover_issues(
     limit: int = typer.Option(10, "--limit", help="Maximum results."),
 ) -> None:
     """Discover issues to work on."""
-    typer.echo("Discovering issues...")
+    with progress_bar("Discovering issues...") as (progress, task):
+        import time
+        time.sleep(2)  # simulates real work
+        progress.update(task, description="Issues discovered!")
 
 
 @issues_app.command("list")
@@ -99,7 +105,10 @@ def analyze(
     output: Optional[Path] = typer.Option(None, "--output", "-o", help="Output file for analysis results."),
 ) -> None:
     """Analyze a repository or issue for contribution readiness."""
-    typer.echo(f"Analyzing {target}...")
+    with progress_bar(f"Analyzing {target}...") as (progress, task):
+        import time
+        time.sleep(2)  # simulates real work
+        progress.update(task, description="Analysis complete!")
 
 
 @app.command()
@@ -141,7 +150,10 @@ def docs(
 @app.command()
 def doctor() -> None:
     """Run system diagnostics to check OSS-Dev setup."""
-    typer.echo("Running diagnostics...")
+    with progress_bar("Running diagnostics...") as (progress, task):
+        import time
+        time.sleep(2)  # simulates real work
+        progress.update(task, description="Diagnostics complete!")
 
 
 @app.command()
