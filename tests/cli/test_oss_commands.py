@@ -6,6 +6,7 @@ import pytest
 from click.testing import CliRunner
 
 from cli.oss_commands import oss_dev_group
+from main import main
 
 
 @pytest.fixture
@@ -92,3 +93,11 @@ def test_oss_dev_switch_requires_target(cli_runner):
     result = cli_runner.invoke(oss_dev_group, ["switch"])
     assert result.exit_code != 0
     assert "Missing argument" in result.output or "required" in result.output.lower()
+
+
+def test_main_version_option(cli_runner):
+    """Test top-level Click CLI version output."""
+    result = cli_runner.invoke(main, ["--version"])
+
+    assert result.exit_code == 0
+    assert result.output == "oss-dev v0.2.0\n"
