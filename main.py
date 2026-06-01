@@ -9,6 +9,7 @@ from agent.persistence import PersistenceManager, SessionSnapshot
 from agent.session import Session
 from config.config import ApprovalPolicy, Config
 from config.loader import load_config
+from oss_dev._version import __version__
 from ui.tui import TUI, get_console
 from oss.workflow import OSSWorkflow
 
@@ -454,6 +455,7 @@ Continue from where we left off."""
 
 
 @click.group()
+@click.version_option(__version__, "--version", "-V", prog_name="oss-dev", message="%(prog)s v%(version)s")
 @click.option(
     "--cwd",
     "-c",
