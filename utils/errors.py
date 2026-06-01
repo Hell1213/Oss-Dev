@@ -87,4 +87,4 @@ class ConfigError(AgentError):
             details["config_file"] = config_file
         super().__init__(message, details=details, **kwargs)
         self.config_key = config_key
-        self.config_file = config_file
+        self.config_file = config_file       
