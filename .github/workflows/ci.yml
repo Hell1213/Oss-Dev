@@ -29,14 +29,14 @@ jobs:
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git config --global user.name "github-actions[bot]"
 
-      - name: Run tests
-        run: uv run pytest
+      - name: Run tests with coverage
+        run: uv run coverage run -m pytest
 
-      - name: Run ruff
+      - name: Run lint
         run: uv run ruff check .
 
-      - name: Run mypy
+      - name: Run type check
         run: uv run mypy
 
-      - name: Run coverage
-        run: uv run coverage run -m pytest
+      - name: Upload coverage report
+        run: uv run coverage report --fail-under=0

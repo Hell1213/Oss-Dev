@@ -54,14 +54,14 @@ def test_oss_dev_group_help(cli_runner):
 
 def test_oss_dev_fix_requires_url(cli_runner):
     """Test that oss-dev fix requires an issue URL."""
-    result = cli_runner.invoke(oss_dev_group, ["fix"])
+    result = cli_runner.invoke(oss_dev_group, ["fix"], env={"GEMINI_API_KEY": "test-key"})
     assert result.exit_code != 0
     assert "Missing argument" in result.output or "required" in result.output.lower()
 
 
 def test_oss_dev_review_requires_number(cli_runner):
     """Test that oss-dev review requires an issue number."""
-    result = cli_runner.invoke(oss_dev_group, ["review"])
+    result = cli_runner.invoke(oss_dev_group, ["review"], env={"GEMINI_API_KEY": "test-key"})
     assert result.exit_code != 0
     assert "Missing argument" in result.output or "required" in result.output.lower()
 
@@ -90,7 +90,7 @@ def test_oss_dev_list_command(cli_runner, temp_repo):
 
 def test_oss_dev_switch_requires_target(cli_runner):
     """Test that oss-dev switch requires a target."""
-    result = cli_runner.invoke(oss_dev_group, ["switch"])
+    result = cli_runner.invoke(oss_dev_group, ["switch"], env={"GEMINI_API_KEY": "test-key"})
     assert result.exit_code != 0
     assert "Missing argument" in result.output or "required" in result.output.lower()
 

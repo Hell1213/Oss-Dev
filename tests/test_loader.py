@@ -1,8 +1,6 @@
 import pytest
-from pathlib import Path
 from unittest.mock import patch, MagicMock
 from config.loader import (
-    get_system_config_path,
     _parse_toml,
     _get_project_config,
     _merge_dicts,
