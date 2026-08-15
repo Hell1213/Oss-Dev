@@ -1,0 +1,54 @@
+{
+  "labels": [
+    {
+      "name": "bug",
+      "color": "d73a4a",
+      "description": "Something is not working"
+    },
+    {
+      "name": "enhancement",
+      "color": "a2eeef",
+      "description": "New feature or request"
+    },
+    {
+      "name": "good first issue",
+      "color": "7057ff",
+      "description": "Good for newcomers"
+    },
+    {
+      "name": "help wanted",
+      "color": "008672",
+      "description": "Extra attention is needed"
+    },
+    {
+      "name": "documentation",
+      "color": "0075ca",
+      "description": "Improvements to docs"
+    },
+    {
+      "name": "level:intermediate",
+      "color": "e4e669",
+      "description": "35 pts"
+    },
+    {
+      "name": "level:advanced",
+      "color": "d93f0b",
+      "description": "55 pts"
+    },
+    {
+      "name": "beginner-friendly",
+      "color": "cccccc",
+      "description": "Low complexity, good for beginners"
+    },
+    {
+      "name": "mentor-needed",
+      "color": "ffc107",
+      "description": "Needs maintainer guidance"
+    },
+    {
+      "name": "blocked",
+      "color": "fc2929",
+      "description": "Waiting on dependency or external issue"
+    }
+  ]
+}

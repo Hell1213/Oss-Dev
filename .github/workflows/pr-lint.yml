@@ -1,0 +1,95 @@
+name: PR Template Validation
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize]
+
+permissions:
+  pull-requests: write
+  contents: read
+
+jobs:
+  validate-pr:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate PR template
+        id: validate
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const body = context.payload.pull_request.body ?? '';
+            const number = context.issue.number;
+
+            // Required sections that must be present and non-empty
+            const requiredSections = [
+              { name: 'Summary', pattern: /^## Summary\s*\n.+/m },
+              { name: 'Related Issue', pattern: /^## Related Issue\s*\n.+/m },
+              { name: 'Type of Change', pattern: /^## Type of Change\s*\n.+/m },
+              { name: 'Testing', pattern: /^## Testing\s*\n.+/m },
+              { name: 'Description', pattern: /^## Description\s*\n.+/m }
+            ];
+
+            const missingOrEmpty = [];
+            const placeholderSections = [];
+
+            for (const section of requiredSections) {
+              if (!section.pattern.test(body)) {
+                missingOrEmpty.push(section.name);
+              } else {
+                // Check if section contains only placeholder text
+                const match = body.match(
+                  new RegExp(`^## ${section.name}\\s*\\n(.+?)(?=^##|$)`, 'ms')
+                );
+                if (match) {
+                  const content = match[1].trim();
+                  const placeholders = [
+                    '<!-- ',
+                    'placeholder',
+                    'todo',
+                    'fill this in',
+                    'describe',
+                    'explain',
+                    'add details'
+                  ];
+                  if (
+                    !content ||
+                    placeholders.some(p => content.toLowerCase().includes(p))
+                  ) {
+                    placeholderSections.push(section.name);
+                  }
+                }
+              }
+            }
+
+            const errors = [];
+            if (missingOrEmpty.length > 0) {
+              errors.push(`Missing or empty required sections: ${missingOrEmpty.join(', ')}`);
+            }
+            if (placeholderSections.length > 0) {
+              errors.push(`Sections with only placeholder text: ${placeholderSections.join(', ')}`);
+            }
+
+            if (errors.length > 0) {
+              // Post a comment on the PR
+              github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: number,
+                body: `❌ PR Template Validation Failed\n\n${errors.map(e => `- ${e}`).join('\n')}\n\nPlease update your PR description to include all required sections with meaningful content.`
+              });
+
+              core.setFailed(errors.join('; '));
+            } else {
+              // Post success comment if first validation
+              if (context.payload.action === 'opened') {
+                github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: number,
+                  body: '✅ PR template validation passed'
+                });
+              }
+            }
