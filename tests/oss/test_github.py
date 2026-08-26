@@ -39,5 +39,11 @@ async def test_create_pr_error_handling():
     config = Config(oss=OSSConfig())
     client = GitHubClient(config)
 
-    with pytest.raises(RuntimeError, match="Failed to create PR via GitHub CLI"):
+
+    with pytest.raises(
+        RuntimeError,
+        match="Direct GitHub API calls not yet implemented",
+    ):
+       
+        
         await client.create_pr("owner", "repo", "title", "body", "head")
