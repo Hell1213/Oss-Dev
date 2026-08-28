@@ -1,7 +1,7 @@
 import asyncio
 from pathlib import Path
 import sys
-import click
+import typer
 
 from agent.agent import Agent
 from agent.events import AgentEventType
@@ -454,18 +454,21 @@ Continue from where we left off."""
             pass
 
 
-@click.group()
-@click.version_option(__version__, "--version", "-V", prog_name="oss-dev", message="%(prog)s v%(version)s")
-@click.option(
-    "--cwd",
-    "-c",
-    type=click.Path(exists=True, file_okay=False, path_type=Path),
-    help="Current working directory",
+app = typer.Typer(
+    help="AI Coding Agent - CLI interface for AI-powered coding assistance.\nUse 'oss-dev' subcommands for OSS contribution workflows.",
+    no_args_is_help=True,
 )
-@click.pass_context
+
+def _version_callback(value: bool) -> None:
+    if value:
+        typer.echo(f"oss-dev v{__version__}")
+        raise typer.Exit()
+
+@app.callback(invoke_without_command=True)
 def main(
-    ctx: click.Context,
-    cwd: Path | None,
+    ctx: typer.Context,
+    version: bool = typer.Option(False, "--version", "-V", help="Show version.", callback=_version_callback, is_eager=True),
+    cwd: Path | None = typer.Option(None, "--cwd", "-c", help="Current working directory"),
 ):
     """
     AI Coding Agent - CLI interface for AI-powered coding assistance.
@@ -477,16 +480,12 @@ def main(
     ctx.obj["cwd"] = cwd
 
 
-@main.command()
-@click.argument("prompt", required=True)
-@click.option(
-    "--cwd",
-    "-c",
-    type=click.Path(exists=True, file_okay=False, path_type=Path),
-    help="Current working directory",
-)
-@click.pass_context
-def chat(ctx: click.Context, prompt: str, cwd: Path | None):
+@app.command()
+def chat(
+    ctx: typer.Context, 
+    prompt: str = typer.Argument(..., help="Run a single prompt through the agent"),
+    cwd: Path | None = typer.Option(None, "--cwd", "-c", help="Current working directory")
+):
     """Run a single prompt through the agent."""
     cwd = cwd or ctx.obj.get("cwd") or Path.cwd()
     
@@ -508,15 +507,11 @@ def chat(ctx: click.Context, prompt: str, cwd: Path | None):
         sys.exit(1)
 
 
-@main.command()
-@click.option(
-    "--cwd",
-    "-c",
-    type=click.Path(exists=True, file_okay=False, path_type=Path),
-    help="Current working directory",
-)
-@click.pass_context
-def interactive(ctx: click.Context, cwd: Path | None):
+@app.command()
+def interactive(
+    ctx: typer.Context,
+    cwd: Path | None = typer.Option(None, "--cwd", "-c", help="Current working directory")
+):
     """Start interactive agent session."""
     cwd = cwd or ctx.obj.get("cwd") or Path.cwd()
     
@@ -537,9 +532,8 @@ def interactive(ctx: click.Context, cwd: Path | None):
 
 
 # Add OSS command group
-# Fixed missing import for OSS commands
 from cli.oss_commands import oss_dev_group
-main.add_command(oss_dev_group)
+app.add_typer(oss_dev_group, name="oss-dev")
 
 if __name__ == "__main__":
-    main()
+    app()

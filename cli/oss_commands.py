@@ -10,7 +10,7 @@ import logging
 from pathlib import Path
 from typing import Optional
 
-import click
+import typer
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
@@ -66,15 +66,13 @@ def get_repo_from_cwd(cwd: Path) -> Optional[tuple[str, str]]:
     return None
 
 
-@click.group(name="oss-dev", help="OSS Dev Agent - Work on GitHub issues")
-@click.option(
-    "--cwd",
-    "-c",
-    type=click.Path(exists=True, file_okay=False, path_type=Path),
-    help="Working directory (default: current directory)",
-)
-@click.pass_context
-def oss_dev_group(ctx: click.Context, cwd: Optional[Path]):
+oss_dev_group = typer.Typer(name="oss-dev", help="OSS Dev Agent - Work on GitHub issues")
+
+@oss_dev_group.callback()
+def oss_dev_callback(
+    ctx: typer.Context, 
+    cwd: Optional[Path] = typer.Option(None, "--cwd", "-c", help="Working directory (default: current directory)")
+):
     """OSS Dev Agent command group."""
     ctx.ensure_object(dict)
     
@@ -98,9 +96,10 @@ def oss_dev_group(ctx: click.Context, cwd: Optional[Path]):
 
 
 @oss_dev_group.command(name="fix", help="Start working on a GitHub issue")
-@click.argument("issue_url", required=True)
-@click.pass_context
-def oss_fix(ctx: click.Context, issue_url: str):
+def oss_fix(
+    ctx: typer.Context, 
+    issue_url: str = typer.Argument(..., help="GitHub issue URL")
+):
     """Start working on a GitHub issue from scratch."""
     from config.config import Config
     from oss.workflow import OSSWorkflow
@@ -406,9 +405,10 @@ The workflow has {7 - ['repository_understanding', 'issue_intake', 'planning', '
 
 
 @oss_dev_group.command(name="review", help="Work on an issue in the current repository")
-@click.argument("issue_number", type=int, required=True)
-@click.pass_context
-def oss_review(ctx: click.Context, issue_number: int):
+def oss_review(
+    ctx: typer.Context, 
+    issue_number: int = typer.Argument(..., help="Issue number")
+):
     """Work on an issue when already in the repository."""
     from config.config import Config
     from oss.workflow import OSSWorkflow
@@ -503,8 +503,7 @@ Please use the 'workflow_orchestrator' tool to manage the workflow and proceed t
 
 
 @oss_dev_group.command(name="resume", help="Continue work on current branch")
-@click.pass_context
-def oss_resume(ctx: click.Context):
+def oss_resume(ctx: typer.Context):
     """Continue work on current branch."""
     from config.config import Config
     from oss.workflow import OSSWorkflow
@@ -577,8 +576,7 @@ Continue from where we left off."""
 
 
 @oss_dev_group.command(name="status", help="Show current work status")
-@click.pass_context
-def oss_status(ctx: click.Context):
+def oss_status(ctx: typer.Context):
     """Show current work status."""
     from config.config import Config
     from oss.workflow import OSSWorkflow
@@ -679,8 +677,7 @@ def oss_status(ctx: click.Context):
 
 
 @oss_dev_group.command(name="list", help="List active branches with issues")
-@click.pass_context
-def oss_list(ctx: click.Context):
+def oss_list(ctx: typer.Context):
     """List active branches with issues."""
     from config.config import Config
     from oss.memory import BranchMemoryManager
@@ -737,9 +734,10 @@ def oss_list(ctx: click.Context):
 
 
 @oss_dev_group.command(name="switch", help="Switch to a different branch or issue")
-@click.argument("target", required=True)
-@click.pass_context
-def oss_switch(ctx: click.Context, target: str):
+def oss_switch(
+    ctx: typer.Context, 
+    target: str = typer.Argument(..., help="Target branch or issue to switch to")
+):
     """Switch to a different branch or issue."""
     from config.config import Config
     from oss.workflow import OSSWorkflow
