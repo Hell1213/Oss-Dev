@@ -9,6 +9,8 @@ from __future__ import annotations
 import json
 import re
 import subprocess
+import sys
+from datetime import datetime, timezone
 from typing import Any
 
 from oss_dev.core.contracts.provider import (
@@ -20,6 +22,8 @@ from oss_dev.core.contracts.provider import (
 )
 from oss_dev.core.errors import ProviderError
 from oss_dev.config.models import Config
+
+LOW_RATE_LIMIT_THRESHOLD = 10
 
 
 class GitHubCLIProvider(GitHubProvider):
@@ -43,8 +47,80 @@ class GitHubCLIProvider(GitHubProvider):
                 details={"hint": "sudo apt install gh && gh auth login"},
             )
 
+    def _format_rate_limit_reset(self, reset: Any) -> str | None:
+        try:
+            reset_timestamp = int(reset)
+        except (TypeError, ValueError):
+            return None
+
+        return datetime.fromtimestamp(
+            reset_timestamp,
+            tz=timezone.utc,
+        ).isoformat()
+
+    def _get_rate_limit(self) -> dict[str, Any] | None:
+        try:
+            result = subprocess.run(
+                ["gh", "api", "rate_limit"],
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+        except (subprocess.CalledProcessError, FileNotFoundError):
+            return None
+
+        try:
+            payload = json.loads(result.stdout)
+        except json.JSONDecodeError:
+            return None
+
+        resources = payload.get("resources")
+        if not isinstance(resources, dict):
+            return None
+
+        core = resources.get("core")
+        if not isinstance(core, dict):
+            return None
+
+        return core
+
+    def _check_rate_limit(self) -> None:
+        rate_limit = self._get_rate_limit()
+        if not rate_limit:
+            return
+
+        try:
+            remaining = int(rate_limit["remaining"])
+        except (KeyError, TypeError, ValueError):
+            return
+
+        reset_time = self._format_rate_limit_reset(rate_limit.get("reset"))
+
+        if remaining <= 0:
+            details: dict[str, Any] = {"remaining": remaining}
+            if reset_time:
+                details["reset_time"] = reset_time
+
+            message = "GitHub API rate limit exceeded."
+            if reset_time:
+                message = f"{message} Resets at {reset_time}."
+
+            raise ProviderError(message, details=details)
+
+        if remaining <= LOW_RATE_LIMIT_THRESHOLD:
+            warning = f"Warning: GitHub API rate limit is low ({remaining} requests remaining)."
+            if reset_time:
+                warning = f"{warning} Resets at {reset_time}."
+            print(warning, file=sys.stderr)
+
     def _run_gh(self, args: list[str]) -> str:
         self._require_gh()
+        is_api_call = len(args) >= 2 and args[0] == "api"
+        endpoint = args[1] if len(args) >= 2 else None
+
+        if is_api_call and endpoint != "rate_limit":
+            self._check_rate_limit()
+
         try:
             result = subprocess.run(
                 ["gh", *args],
@@ -54,9 +130,29 @@ class GitHubCLIProvider(GitHubProvider):
             )
             return result.stdout
         except subprocess.CalledProcessError as e:
+            error_text = e.stderr.strip() or e.stdout.strip()
+            details: dict[str, Any] = {"args": args}
+
+            if "rate limit" in error_text.lower():
+                rate_limit = self._get_rate_limit() if endpoint != "rate_limit" else None
+                reset_time = self._format_rate_limit_reset(
+                    rate_limit.get("reset") if rate_limit else None
+                )
+                if reset_time:
+                    details["reset_time"] = reset_time
+                if rate_limit and "remaining" in rate_limit:
+                    details["remaining"] = rate_limit["remaining"]
+
+                message = "GitHub API rate limit exceeded."
+                if reset_time:
+                    message = f"{message} Resets at {reset_time}."
+                if error_text:
+                    details["error"] = error_text
+                raise ProviderError(message, details=details) from e
+
             raise ProviderError(
-                f"GitHub CLI error: {e.stderr.strip() or e.stdout.strip()}",
-                details={"args": args},
+                f"GitHub CLI error: {error_text}",
+                details=details,
             ) from e
 
     def parse_issue_url(self, url: str) -> dict[str, Any]:
