@@ -3,6 +3,7 @@
 Professional Typer-based CLI with consistent UX, rich output, and actionable errors.
 """
 
+import json
 import re
 from pathlib import Path
 from typing import Optional
@@ -43,6 +44,10 @@ def _parse_issue_number(issue_url: str) -> int:
     return int(match.group(1))
 
 
+def _echo_json(data: object) -> None:
+    typer.echo(json.dumps(data))
+
+
 @app.callback(invoke_without_command=True)
 def main(
     version: bool = typer.Option(False, "--version", "-V", help="Show version.", callback=_version_callback, is_eager=True),
@@ -57,8 +62,22 @@ def discover_repos(
     language: Optional[str] = typer.Option(None, "--language", "-l", help="Filter by language."),
     good_first_issues: bool = typer.Option(False, "--good-first-issues", "-g", help="Only repos with good first issues."),
     limit: int = typer.Option(10, "--limit", help="Maximum results."),
+    json_output: bool = typer.Option(False, "--json", help="Output structured JSON."),
 ) -> None:
     """Discover open source repositories to contribute to."""
+    if json_output:
+        _echo_json(
+            {
+                "repositories": [],
+                "filters": {
+                    "language": language,
+                    "good_first_issues": good_first_issues,
+                    "limit": limit,
+                },
+            }
+        )
+        return
+
     with progress_bar("Discovering repositories...") as (progress, task):
         import time
         time.sleep(2)  # simulates real work
@@ -71,8 +90,23 @@ def discover_issues(
     good_first: bool = typer.Option(False, "--good-first", "-g", help="Good first issues only."),
     label: Optional[str] = typer.Option(None, "--label", "-l", help="Filter by label."),
     limit: int = typer.Option(10, "--limit", help="Maximum results."),
+    json_output: bool = typer.Option(False, "--json", help="Output structured JSON."),
 ) -> None:
     """Discover issues to work on."""
+    if json_output:
+        _echo_json(
+            {
+                "issues": [],
+                "filters": {
+                    "repo": repo,
+                    "good_first": good_first,
+                    "label": label,
+                    "limit": limit,
+                },
+            }
+        )
+        return
+
     with progress_bar("Discovering issues...") as (progress, task):
         import time
         time.sleep(2)  # simulates real work
@@ -85,8 +119,21 @@ def issues_list(
     state: str = typer.Option("open", "--state", "-s", help="Issue state: open, closed, all."),
     label: Optional[str] = typer.Option(None, "--label", "-l", help="Filter by label."),
     limit: int = typer.Option(10, "--limit", help="Maximum results."),
+    json_output: bool = typer.Option(False, "--json", help="Output structured JSON."),
 ) -> None:
     """List issues for a repository."""
+    if json_output:
+        _echo_json(
+            {
+                "repo": repo,
+                "state": state,
+                "label": label,
+                "limit": limit,
+                "issues": [],
+            }
+        )
+        return
+
     typer.echo(f"Listing issues for {repo}...")
 
 
@@ -103,8 +150,21 @@ def issues_show(
 def analyze(
     target: str = typer.Argument(..., help="Repository path or URL to analyze."),
     output: Optional[Path] = typer.Option(None, "--output", "-o", help="Output file for analysis results."),
+    json_output: bool = typer.Option(False, "--json", help="Output structured JSON."),
 ) -> None:
     """Analyze a repository or issue for contribution readiness."""
+    if json_output:
+        _echo_json(
+            {
+                "target": target,
+                "output": str(output) if output else None,
+                "analysis": {
+                    "status": "pending",
+                },
+            }
+        )
+        return
+
     with progress_bar(f"Analyzing {target}...") as (progress, task):
         import time
         time.sleep(2)  # simulates real work
