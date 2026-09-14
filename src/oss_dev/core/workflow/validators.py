@@ -81,7 +81,7 @@ class ImplementationValidator(PhaseValidator):
             return True, f"Validation passed: {len(modified)} files on branch {current_branch}"
 
         except Exception as e:
-            return False, fbCould not verify file changes: {e}"
+            return False, f"Could not verify file changes: {e}"
 
 
 class VerificationValidator(PhaseValidator):
