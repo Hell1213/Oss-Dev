@@ -12,6 +12,15 @@ from typing import Any
 
 
 def get_phase_prompt(phase: str, context: dict[str, Any] | None = None) -> str:
+    """Get a compact prompt for the current workflow phase.
+
+    Args:
+        phase: Workflow phase name (matches WorkflowPhase enum values).
+        context: Optional phase-specific context (issue_url, branch_name, etc.)
+
+    Returns:
+        Compact phase prompt string (target: <15 lines each).
+    """
     ctx = context or {}
     prompts = {
         "repository_understanding": _repo_analysis_prompt(ctx),
